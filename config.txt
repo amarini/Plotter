@@ -1,0 +1,53 @@
+########################
+## Base Configuration ##
+########################
+## Type = 1D, 2D
+## Text = CMS, Preliminary, Unpublished
+## yrange = 0,1
+## canv = 800,800
+## ratio = Name, None/False do ratio plot with respect the histo name=Name
+## yLog = False, True
+## xLog = False, True
+## output= outputName
+## format= pdf,root ... list
+##########################
+## Legend Configuration ##
+##########################
+## Draw = True/False
+##
+#########################
+## Histo Configuration ##
+#########################
+##
+## [name]
+## Type = TH1D, TH2D, TGraph
+## file = prova.root
+## obj  = prova
+## style = marker, line, band
+##  -> marker   shift=xxx
+##              yerror=True
+##              xerror=False
+##  -> band     shift = 0 
+##              len =0  #all
+
+[base]
+Type = 1D
+Text = Preliminary
+yrange = 0,1
+canv = 800,800
+ratio = False
+yLog = False
+xLog = False
+output= output
+format= pdf,root,png
+
+[legend]
+draw =  True
+
+[name]
+Type = TH1D
+file = prova.root
+obj  = prova
+style = marker
+maker = 21
+color = ROOT.kRed
