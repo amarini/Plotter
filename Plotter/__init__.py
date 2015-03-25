@@ -8,31 +8,6 @@ import re
 from glob import glob
 from subprocess import *
 
-## configuration
-from optparse import OptionParser, OptionGroup
-
-# configparser in python3
-from ConfigParser import RawConfigParser
-
-if __name__=="__main__":
-	usage=''' 
-		%prog
-		use to plot TH1D, TGraph, TH2D ...
-		in CMSSW Style
-		'''
-	_parser=OptionParser(usage=usage)
-	_parser.add_option()
-	
-	(opts,args)=parser.parse_args()
-	
-	## read configuration
-	_cfg = RawConfigParser()
-	_cfg.read('config.txt')
-	cfg = dict()
-	for sect in _cfg.sections():
-		cfg[sect] = dict()
-		for (name, value) in _cfg.items(sect):
-			cfg[sect][name] = value
 
 # remove argv, otherwise if -b change ROOT Behaviour
 sys.argv=[]
@@ -217,11 +192,18 @@ class Histo(BaseDraw):
 		return self
 
 class Plotter:
-	__init__(config):
+	__init__(cfg):
 		#parse config
 		self.canv=None
-		self.outname="output"
-		self.outformat=["pdf","root"]
+		self.cfg=config
+		self.canv_res=[800,800]
+		if "base" not in cfg: raise TypeError
+		if "type" not in cfg["base"]: cfg["base"]["type"] = "1D"
+		if "yrange" not in cfg["base"]: cfg["base"]["yrange"] = None
+		if "xrange" not in cfg["base"]: cfg["base"]["xrange"] = None
+		if "legend" not in cfg: 
+			self["legend"] ={}
+			self["legend"]["draw"]="False"
 	__del__():
 		pass
 	def DrawCMS():
@@ -231,8 +213,6 @@ class Plotter:
 	def Draw():
 		self.canv=ROOT.TCanvas("canv","canv",800,800)
 		return self
-	def SaveAs():
+	def Save():
 		return self
 
-if __name__=="__main__":
-	p=Plotter(cfg)

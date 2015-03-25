@@ -1,8 +1,8 @@
 ########################
 ## Base Configuration ##
 ########################
-## Type = 1D, 2D
-## Text = CMS, Preliminary, Unpublished
+## type = 1D, 2D
+## text = CMS, Preliminary, Unpublished
 ## yrange = 0,1
 ## canv = 800,800
 ## ratio = Name, None/False do ratio plot with respect the histo name=Name
@@ -13,7 +13,7 @@
 ##########################
 ## Legend Configuration ##
 ##########################
-## Draw = True/False
+## draw = True/False
 ##
 #########################
 ## Histo Configuration ##
@@ -31,21 +31,23 @@
 ##              len =0  #all
 
 [base]
-Type = 1D
-Text = Preliminary
+type = 1D
+text = Preliminary
 yrange = 0,1
+xrange = 0,1
 canv = 800,800
 ratio = False
 yLog = False
 xLog = False
 output= output
 format= pdf,root,png
+drawList= name,name2
 
 [legend]
 draw =  True
 
 [name]
-Type = TH1D
+type = TH1D
 file = prova.root
 obj  = prova
 style = marker
