@@ -192,26 +192,42 @@ class Histo(BaseDraw):
 		return self
 
 class Plotter:
-	__init__(cfg):
+	__init__(cfg, verbose=0):
 		#parse config
 		self.canv=None
 		self.cfg=config
 		self.canv_res=[800,800]
+		self.verbose=verbose
 		if "base" not in cfg: raise TypeError
-		if "type" not in cfg["base"]: cfg["base"]["type"] = "1D"
-		if "yrange" not in cfg["base"]: cfg["base"]["yrange"] = None
-		if "xrange" not in cfg["base"]: cfg["base"]["xrange"] = None
+		if "drawList" not in cfg: 
+			print>>sys.stderr, "--> You should indicate what you want to draw in drawList"
+			raise TypeError
+		for l in cfg["base"]["drawList"]:
+			if self.verbose >0: print "-> Adding Object '"+l+"' to the list to be drawn"
+			if l not in cfg: 
+				print>>sys.stderr, "Object '"+l+"' in drawList but not configured" 
+				raise NameError
 		if "legend" not in cfg: 
-			self["legend"] ={}
-			self["legend"]["draw"]="False"
+			self.cfg["legend"] ={}
+			self.cfg["legend"]["draw"]="False"
 	__del__():
 		pass
+	def LoadTH1(name):
+		return self
+	# public 
 	def DrawCMS():
 		return self
 	def DrawLegend():
 		return self
 	def Draw():
-		self.canv=ROOT.TCanvas("canv","canv",800,800)
+		# CREATE CANVAS
+		if "canv" not in cfg["base"]:
+			self.canv=ROOT.TCanvas("canv","canv",800,800)
+		else:
+			self.canv=ROOT.TCanvas("canv","canv",
+					int(self.cfg["base"]["canv"].split(',')[0]),
+					int(self.cfg["base"]["canv"].split(',')[1]),
+					)
 		return self
 	def Save():
 		return self
