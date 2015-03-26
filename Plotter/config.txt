@@ -36,15 +36,17 @@
 #########################
 ##
 ## [name]
-## type = TH1D, TH2D, TGraph
+## type = TH1D, TH2D, TGraph  #TH1 works with TH1D
 ## file = prova.root
 ## obj  = prova
 ## style = marker, line, band
+## styleopt= 21
 ##  -> marker   shift=xxx
 ##              yerror=True
 ##              xerror=False
 ##  -> band     shift = 0 
 ##              len =0  #all
+##  color = ROOT.kRed / RGB,0.7,0.8,.9 / 21
 ##  label = legend label
 
 [base]

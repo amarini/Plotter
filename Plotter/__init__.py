@@ -22,7 +22,8 @@ class BaseDraw():
 		self.styleopt = 21
 		self.color = ROOT.kBlack
 		self.width = 1
-		pass
+		self.obj = None
+		pass 
 	__del__():
 		pass
 	def Draw():
@@ -35,6 +36,11 @@ class BaseDraw():
 		return self
 	def SetBand():
 		self.style=styles["band"]
+		return self
+	def SetStyle(string):
+		if string.lower()=="band": self.SetBand()
+		if string.lower()=="line": self.SetLine()
+		if string.lower()=="marker": self.SetMarker()
 		return self
 	def CopyStyle( other ):
 		self.style = other.style
@@ -212,6 +218,8 @@ class Plotter:
 		self.canv_res=[800,800]
 		self.verbose=verbose
 		self.collection=Collection()
+		self.newcolorindex=2340  ## just unused
+		self.newcolors=[]
 		## make me configurable
 		self.labelsize=24
 		self.titlesize=28
@@ -248,7 +256,27 @@ class Plotter:
 			raise TypeError
 		f = ROOT.TFile.Open(cfg[name]["file"] )
 		h = f.Get(cfg[name]["obj"])
-		self.collection.Add(name,h)
+		#TODO -> TH2D
+		if cfg[name]["type"].lower() ==  "th1d":
+			obj=Histo(name)
+			obj.obj = h
+		if cfg[name]["type"].lower() == "tgraph":
+			obj=Graph(name)
+			obj.obj = h
+
+		if "style" in cfg[name]:obj.SetStyle(cfg[name]["style"])
+		# 
+		color = ColorKey(name,"color")
+		if color>=0: obj.color=color
+		#
+		styleopt = ColorKey(name,"styleopt")
+		if styleopt >0 : obj.styleopt=styleopt
+		#
+		if "len" in cfg[name]: obj.length = float(cfg[name]["len"])
+		if "shift" in cfg[name]: obj.shift = float(cfg[name]["shift"])
+		if "width" in cfg[name]: obj.width = int(cfg[name]["width"])
+		#
+		self.collection.Add(name,obj)
 		return self
 	# public 
 	def DrawCMS():
@@ -330,6 +358,37 @@ class Plotter:
 		if extraValues: return True
 		print>>sys.stderr, "Unrecognized bool option", self.cfg[section][field],"in",section+":"+field
 		raise NameError
+	def ColorKey(section,field):
+		''' return -1 in case of not found'''
+		#self.newcolorindex=2340  ## just unused
+		if section not in self.cfg:
+			return -1
+		if field not in self.cfg[section]:
+			return -1
+		colortext=cfg[section][field]
+		if "ROOT" in colortext:
+			exec("color="+colortext)
+		elif "RGB" in colortext:
+			r=float( colortext.split(',')[1])
+			g=float( colortext.split(',')[2])
+			b=float( colortext.split(',')[3])
+			c=ROOT.TColor(self.newcolorindex,r,g,b)
+			self.colors.append(c) ## garbage collector
+			color=self.newcolorindex
+			self.newcolorindex+=1
+		else:
+			color=int( colortext )
+		return color
+
+	def NumKey(section,field):
+		if section not in self.cfg:
+			print >> sys.stderr, "cfg section",section ," does not exist"
+			raise TypeError
+		if field not in self.cfg[section]:
+			print >> sys.stderr, "cfg field",field, "in section",section,"does not exist"
+			raise TypeError
+		return int(cfg[section][field])
+
 	def DrawLegend():
 		if self.cfg["legend"]["draw"].lower() == "false": return self
 		if self.cfg["legend"]["draw"].lower() == "no": return self
@@ -373,7 +432,6 @@ class Plotter:
 
 		return self
 	def DrawObjects():
-		#TODO
 		for x in self.collection:
 			x.Draw()
 		return self
@@ -414,8 +472,12 @@ class Plotter:
 		axisHist.Draw("AXIS")
 		axisHist.Draw("AXIS X+Y+ SAME")
 		self.axisHist=axisHist
+		if BoolKey("base","xLog"): self.pad1.SetLogx()
+		if BoolKey("base","yLog"): self.pad1.SetLogy()
 		return self
+
 	def RedrawAxis():
+		self.pad1.cd()
 		axisHist.Draw("AXIS SAME")
 		axisHist.Draw("AXIS X+ Y+ SAME")
 		return self
@@ -431,14 +493,17 @@ class Plotter:
 		## clone the collection in collratio
 		## perform the division
 		return self
+
 	def DrawRatio():
 		self.pad2.cd()
 		return self
+
 	def Draw():
 		Style().DrawCanvas().DrawObjects().DrawLegend().DrawCMS().RedrawAxis()
 		if BoolKey("base","ratio",True):
 			MakeRatio().DrawRatio()
 		return self
+
 	def Save():
 		for ext in self.cfg["base"]["format"].split(','):
 			self.canv.SaveAs( self.cfg["base"]["output"] + "."+ext)
