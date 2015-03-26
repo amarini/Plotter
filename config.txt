@@ -8,19 +8,35 @@
 ## ratio = Name, None/False do ratio plot with respect the histo name=Name
 ## yLog = False, True
 ## xLog = False, True
+## xTitle = True,False,Text
+## yTitle = True,False,Text
+## xRange = True/False/x0,x1
+## yRange = True/False/x0,x1
 ## output= outputName
 ## format= pdf,root ... list
 ##########################
 ## Legend Configuration ##
 ##########################
 ## draw = True/False
+## position = 0.7,.7,.9,.9
+## header = myheader # optional
+## legendList= name1,name2
+##
+##########################
+## Text   Configuration ##
+##########################
+## text = cms/preliminary/unpublished
+## position = tl/tr/bl/br ## implemented only tl so far
+##            dtl/dtr/dbl/dbr  ## two lines
+## lumi = 19.7~(8TeV)... ~->' '
+## extra = x!y!text      ~->' ' @
 ##
 #########################
 ## Histo Configuration ##
 #########################
 ##
 ## [name]
-## Type = TH1D, TH2D, TGraph
+## type = TH1D, TH2D, TGraph
 ## file = prova.root
 ## obj  = prova
 ## style = marker, line, band
@@ -29,10 +45,10 @@
 ##              xerror=False
 ##  -> band     shift = 0 
 ##              len =0  #all
+##  label = legend label
 
 [base]
 type = 1D
-text = Preliminary
 yrange = 0,1
 xrange = 0,1
 canv = 800,800
@@ -43,8 +59,17 @@ output= output
 format= pdf,root,png
 drawList= name,name2
 
+
+[text]
+text = Preliminary
+position = tl 
+lumi = 19.7~fb^{-1}~(8TeV)
+
 [legend]
 draw =  True
+header = myHead
+legendList = name1,name2
+position = .7,.7,.8,.8
 
 [name]
 type = TH1D
@@ -53,3 +78,4 @@ obj  = prova
 style = marker
 maker = 21
 color = ROOT.kRed
+label = mylabel
