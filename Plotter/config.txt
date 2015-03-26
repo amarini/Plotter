@@ -14,6 +14,7 @@
 ## yRange = True/False/x0,x1
 ## output= outputName
 ## format= pdf,root ... list
+## verbose = 1
 ##########################
 ## Legend Configuration ##
 ##########################
@@ -39,7 +40,7 @@
 ## type = TH1D, TH2D, TGraph  #TH1 works with TH1D
 ## file = prova.root
 ## obj  = prova
-## style = marker, line, band
+## style = marker, line, band 
 ## styleopt= 21
 ##  -> marker   shift=xxx
 ##              yerror=True
