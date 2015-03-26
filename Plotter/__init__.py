@@ -13,36 +13,43 @@ from subprocess import *
 sys.argv=[]
 import ROOT
 
-class BaseDraw():
-	types={"TH1D":1,"TGraph":2,"TH2D":3}
-	styles={"line":1,"marker":2,"band":3}
-
-	__init__():
+class BaseDraw:
+	''' Base Class for Objects that can be drawn'''
+	def __init__(self):
+		self.types={"TH1D":1,"TGraph":2,"TH2D":3}
+		self.styles={"line":1,"marker":2,"band":3}
 		self.style = styles["line"]
 		self.styleopt = 21
 		self.color = ROOT.kBlack
 		self.width = 1
 		self.obj = None
 		pass 
-	__del__():
+
+	def __del__(self):
 		pass
-	def Draw():
+
+	def Draw(self):
 		return self
-	def SetMarker():
+
+	def SetMarker(self):
 		self.style=styles["marker"]
 		return self
-	def SetLine():
+
+	def SetLine(self):
 		self.style=styles["line"]
 		return self
-	def SetBand():
+
+	def SetBand(self):
 		self.style=styles["band"]
 		return self
-	def SetStyle(string):
+
+	def SetStyle(self, string):
 		if string.lower()=="band": self.SetBand()
 		if string.lower()=="line": self.SetLine()
 		if string.lower()=="marker": self.SetMarker()
 		return self
-	def CopyStyle( other ):
+
+	def CopyStyle(self, other ):
 		self.style = other.style
 		self.styleopt= other.styleopt
 		self.color= other.color
@@ -51,69 +58,70 @@ class BaseDraw():
 		self.length = other.length
 		return self
 
-class Collection():
+class Collection:
 	'''Store a collection of drawable objects'''
-	__init__():
+	def __init__(self):
 		self.objs={}
 		self.names=[]
 		self.cur=0
-	__del__():
+	def __del__(self):
 		pass
-	__len__(self):
+	def __len__(self):
 		return len(self.objs)
-	__iter__(self):
+	def __iter__(self):
 		for  x in self.objs:
 			yield x
-	__next__(self):
+	def __next__(self):
 		if self.cur < len(self) :
 			self.cur +=1 
 			return self.objs[ self.names[ self.cur - 1  ] ]
 		else: 
 			raise StopIteration
 		pass
-	def Add(name,obj):
+	def Add(self, name, obj):
 		''' Add obj with name = name to the list '''
 		self.objs.append(obj)
 		self.names.append(name)
 		return self
-	def Remove(name):
+	def Remove(self, name):
 		del self.objs[name]
 		self.names[:] = [x for x in self.names and x != name ]
 		return self
-	def Get(name):
+	def Get(self, name):
 		return self.objs[name]
 
 class Graph(BaseDraw):
-	__init__():
+	''' Implement a Graph object '''
+	def __init__(self):
 		self.graph=None
 		self.graphRange=None
 
-	__del__():
+	def __del__(self):
 		if self.graph != None:
 			self.graph.Delete()
 			self.graph=None
 
-	def Empty(name):
+	def Empty(self, name):
 		''' Init empty TGraph with name = name'''
 		self.graph=ROOT.TGraphAsymmError()
 		self.graph.SetName(name)
 		return self
 
-	def AddPoint(x,y,dx=0,dy=0):
+	def AddPoint(self, x, y, dx=0, dy=0):
 		'''Add a point with symmetric errors '''
 		n=self.graph.GetN()
 		self.graph.SetPoint(n, x,y)
 		self.graph.SetPointError(n, dx, dx, dy, dy)
 		return self
 
-	def AddPoint(x,y,exl,exh,eyl,eyh):
+	def AddPoint(self, x, y, exl, exh, eyl, eyh):
 		'''Add a point with asymmetric errors '''
 		n=self.graph.GetN()
 		self.graph.SetPoint(n, x,y)
 		self.graph.SetPointError(n, exl, exh, eyl, eyh)
 		return self
 
-	def Range(ymin,ymax):
+	def Range(self, ymin,ymax):
 		''' Change aspects points in such a way that the errors are in the yrange.
 		    This is performed by filling the graphRange histo that will be drawn w/o markers
 		'''
@@ -137,7 +145,7 @@ class Graph(BaseDraw):
 				self.graphRange.SetPointError(n,0,0, ymin -y +eyl, eyh+y-ymin)
 		return self	
 
-	def Draw():
+	def Draw(self):
 		if self.style == styles["marker"]:
 			self.graph.SetMarkerStyle(self.styleopt)
 			self.graph.SetLineColor(self.color)
@@ -146,7 +154,7 @@ class Graph(BaseDraw):
 			self.graph.Draw("P SAME")
 			if self.graphRange != None:
 				self.graphRange.SetMarkerStyle(0)
-				self.graphRange.SetMarkerSize(self.0)
+				self.graphRange.SetMarkerSize(0)
 				self.graphRange.SetLineColor(self.color)
 				self.graphRange.SetMarkerColor(self.color)
 				self.graphRange.SetLineWidth(self.width)
@@ -159,7 +167,7 @@ class Graph(BaseDraw):
 			self.graph.Draw("E2 SAME")
 			if self.graphRange != None:
 				self.graphRange.SetMarkerStyle(0)
-				self.graphRange.SetMarkerSize(self.0)
+				self.graphRange.SetMarkerSize(0)
 				self.graphRange.SetFillStyle(self.styleopt)
 				self.graphRange.SetLineColor(self.color)
 				self.graphRange.SetFillColor(self.color)
@@ -169,7 +177,8 @@ class Graph(BaseDraw):
 		return self
 
 class Histo(BaseDraw):
-	__init__():
+	def __init__(self):
+		super(Histo, self).__init__()
 		self.hist=None
 		self.xerror=False
 		self.yerror=True
@@ -177,7 +186,7 @@ class Histo(BaseDraw):
 		self.shift=0
 		self.length=0
 
-	def ConvertToGraph():
+	def ConvertToGraph(self):
 		g=Graph(self.hist.GetName()+"_graph")
 		g.CopyStyle(self)
 		for i in range(1, self.hist.GetNbinsX()+1):
@@ -196,7 +205,7 @@ class Histo(BaseDraw):
 			g.AddPoint(  x, y, ex, ey ) 
 		return g
 
-	def Draw():
+	def Draw(self):
 		if self.style==styles["marker"] or self.style==styles["band"]:
 			# transform it to a Graph
 			self.mygraph=self.ConvertToGraph()
@@ -211,10 +220,10 @@ class Histo(BaseDraw):
 		return self
 
 class Plotter:
-	__init__(cfg, verbose=0):
+	def __init__(self, cfg, verbose=0):
 		#parse config
 		self.canv=None
-		self.cfg=config
+		self.cfg=cfg
 		self.canv_res=[800,800]
 		self.verbose=verbose
 		self.collection=Collection()
@@ -243,28 +252,28 @@ class Plotter:
 				raise NameError
 			##### Create obj
 			self.LoadObj( name )
-	__del__():
+	def __del__(self):
 		pass
-	def LoadObj(name):
+	def LoadObj(self, name):
 		if self.verbose:
 			print "--- Loading Histo "+name+" ---"
-		if "file" not cfg[name]: 
+		if "file" not in self.cfg[name]: 
 			print >>sys.stderr, "file not specified in cfg for histo", name
 			raise TypeError
-		if "obj"  not in cfg[name]:
+		if "obj"  not in self.cfg[name]:
 			print >>sys.stderr, "obj not specified in cfg for histo", name
 			raise TypeError
-		f = ROOT.TFile.Open(cfg[name]["file"] )
-		h = f.Get(cfg[name]["obj"])
+		f = ROOT.TFile.Open(self.cfg[name]["file"] )
+		h = f.Get(self.cfg[name]["obj"])
 		#TODO -> TH2D
-		if cfg[name]["type"].lower() ==  "th1d":
+		if self.cfg[name]["type"].lower() ==  "th1d":
 			obj=Histo(name)
 			obj.obj = h
-		if cfg[name]["type"].lower() == "tgraph":
+		if self.cfg[name]["type"].lower() == "tgraph":
 			obj=Graph(name)
 			obj.obj = h
 
-		if "style" in cfg[name]:obj.SetStyle(cfg[name]["style"])
+		if "style" in self.cfg[name]:obj.SetStyle(self.cfg[name]["style"])
 		# 
 		color = ColorKey(name,"color")
 		if color>=0: obj.color=color
@@ -272,46 +281,46 @@ class Plotter:
 		styleopt = ColorKey(name,"styleopt")
 		if styleopt >0 : obj.styleopt=styleopt
 		#
-		if "len" in cfg[name]: obj.length = float(cfg[name]["len"])
-		if "shift" in cfg[name]: obj.shift = float(cfg[name]["shift"])
-		if "width" in cfg[name]: obj.width = int(cfg[name]["width"])
+		if "len" in self.cfg[name]: obj.length = float(self.cfg[name]["len"])
+		if "shift" in self.cfg[name]: obj.shift = float(self.cfg[name]["shift"])
+		if "width" in self.cfg[name]: obj.width = int(self.cfg[name]["width"])
 		#
 		self.collection.Add(name,obj)
 		return self
 	# public 
-	def DrawCMS():
-		if "text" not in cfg["text"]: cfg["text"]["text"]= "CMS"
+	def DrawCMS(self):
+		if "text" not in self.cfg["text"]: self.cfg["text"]["text"]= "CMS"
 		latex = ROOT.TLatex()
 		latex.SetNDC()
 		latex.SetFontSize(0.04)
 		latex.SetTextFont(42)
 		mytext="CMS"
-		if cfg["text"]["text"].lower() == "cms": mytext="#bf{CMS}"
-		if cfg["text"]["text"].lower() == "preliminary" : mytext="#bf{CMS},#scale[0.75]{ #it{Preliminary}}"
-		if cfg["text"]["text"].lower() == "unpublished" : mytext="#bf{CMS},#scale[0.75]{ #it{Unpublished}}"
-		if "position" not in cfg["text"] :  cfg["text"]["position"]="tl"
+		if self.cfg["text"]["text"].lower() == "cms": mytext="#bf{CMS}"
+		if self.cfg["text"]["text"].lower() == "preliminary" : mytext="#bf{CMS},#scale[0.75]{ #it{Preliminary}}"
+		if self.cfg["text"]["text"].lower() == "unpublished" : mytext="#bf{CMS},#scale[0.75]{ #it{Unpublished}}"
+		if "position" not in self.cfg["text"] :  self.cfg["text"]["position"]="tl"
 
-		if cfg["text"]["position"].lower()[0] == "d":
-			if cfg["text"]["text"].lower() == "preliminary": mytext="#splitline{#bf{CMS}}{#scale[0.75]{#it{Preliminary}}}"
-			if cfg["text"]["text"].lower() == "unpublished": mytext="#splitline{#bf{CMS}}{#scale[0.75]{#it{Unpublished}}}"
-			if cfg["text"]["position"].lower() == "dtl": cfg["text"]["position"] = "tl"
-			if cfg["text"]["position"].lower() == "dtr": cfg["text"]["position"] = "tr"
-			if cfg["text"]["position"].lower() == "dbl": cfg["text"]["position"] = "bl"
-			if cfg["text"]["position"].lower() == "dbr": cfg["text"]["position"] = "br"
+		if self.cfg["text"]["position"].lower()[0] == "d":
+			if self.cfg["text"]["text"].lower() == "preliminary": mytext="#splitline{#bf{CMS}}{#scale[0.75]{#it{Preliminary}}}"
+			if self.cfg["text"]["text"].lower() == "unpublished": mytext="#splitline{#bf{CMS}}{#scale[0.75]{#it{Unpublished}}}"
+			if self.cfg["text"]["position"].lower() == "dtl": self.cfg["text"]["position"] = "tl"
+			if self.cfg["text"]["position"].lower() == "dtr": self.cfg["text"]["position"] = "tr"
+			if self.cfg["text"]["position"].lower() == "dbl": self.cfg["text"]["position"] = "bl"
+			if self.cfg["text"]["position"].lower() == "dbr": self.cfg["text"]["position"] = "br"
 
-		if cfg["text"]["position"].lower()=="tl":
+		if self.cfg["text"]["position"].lower()=="tl":
 			latex.SetTextAlign(31)
 			x=self.canv.GetLeftMargin()+ 0.02
 			y=1-self.canv.GetTopMargin() -0.02
-		elif cfg["text"]["position"].lower()=="tr":
+		elif self.cfg["text"]["position"].lower()=="tr":
 			latex.SetTextAlign(33)
 			x=1-self.canv.GetRightMargin()- 0.02
 			y=1-self.canv.GetTopMargin() -0.02
-		elif cfg["text"]["position"].lower()=="bl":
+		elif self.cfg["text"]["position"].lower()=="bl":
 			latex.SetTextAlign(11)
 			x=self.canv.GetLeftMargin()+ 0.02
 			y=self.canv.GetBottomMargin() +0.02
-		elif cfg["text"]["position"].lower()=="br":
+		elif self.cfg["text"]["position"].lower()=="br":
 			latex.SetTextAlign(13)
 			x=1-self.canv.GetRightMargin()- 0.02
 			y=self.canv.GetBottomMargin() +0.02
@@ -323,26 +332,28 @@ class Plotter:
 		y=1-self.canv.GetTopMargin() +0.02
 		latex.SetFontSize(0.03)
 		latex.SetTextAlign(13)
-		if "lumi" not in cfg["text"]: cfg["text"]["lumi"]="19.7 fb^{-1} (8TeV)"
-		cfg["text"]["lumi"] = ParseString(cfg["text"]["lumi"]  )
-		latex.DrawLatex(x,y,cfg["text"]["lumi"])
+		if "lumi" not in self.cfg["text"]: self.cfg["text"]["lumi"]="19.7 fb^{-1} (8TeV)"
+		self.cfg["text"]["lumi"] = ParseString(self.cfg["text"]["lumi"]  )
+		latex.DrawLatex(x,y,self.cfg["text"]["lumi"])
 
-		if "extra" in cfg["text"]:
+		if "extra" in self.cfg["text"]:
 			latex.SetTextAlign(11)
 			latex.SetTextSize(0.03)
-			x=float(cfg["text"]["extra"].split('!')[0] )
-			y=float(cfg["text"]["extra"].split('!')[1] )
-			mytext=cfg["text"]["extra"].split('!')[2]
+			x=float(self.cfg["text"]["extra"].split('!')[0] )
+			y=float(self.cfg["text"]["extra"].split('!')[1] )
+			mytext=self.cfg["text"]["extra"].split('!')[2]
 			mytext = ParseString(mytext)
 			latex.DrawLatex(x,y,mytext)
 
 		return self
-	def ParseStr(string):
+
+	def ParseStr(self, string):
 		''' Standard reparsing in the configfile for displayed text'''
 		r=re.sub('~',' ',string)
 		r=re.sub('@','#',string)
 		return r
-	def BoolKey(section,field,extraValues=False):
+
+	def BoolKey(self, section, field, extraValues=False):
 		'''Parse cfg section and field to return a bool'''
 		if section not in self.cfg:
 			print >>sys.stderr, "section ", section,"not in cfg"
@@ -358,7 +369,8 @@ class Plotter:
 		if extraValues: return True
 		print>>sys.stderr, "Unrecognized bool option", self.cfg[section][field],"in",section+":"+field
 		raise NameError
-	def ColorKey(section,field):
+
+	def ColorKey(self, section,field):
 		''' return -1 in case of not found'''
 		#self.newcolorindex=2340  ## just unused
 		if section not in self.cfg:
@@ -380,20 +392,20 @@ class Plotter:
 			color=int( colortext )
 		return color
 
-	def NumKey(section,field):
+	def NumKey(self, section, field):
 		if section not in self.cfg:
 			print >> sys.stderr, "cfg section",section ," does not exist"
 			raise TypeError
 		if field not in self.cfg[section]:
 			print >> sys.stderr, "cfg field",field, "in section",section,"does not exist"
 			raise TypeError
-		return int(cfg[section][field])
+		return int(self.cfg[section][field])
 
-	def DrawLegend():
+	def DrawLegend(self):
 		if self.cfg["legend"]["draw"].lower() == "false": return self
 		if self.cfg["legend"]["draw"].lower() == "no": return self
 
-		if self.cfg["legend"]["draw"].lower() != "yes" and
+		if self.cfg["legend"]["draw"].lower() != "yes" and \
 		   self.cfg["legend"]["draw"].lower() != "true":
 			   print >>sys.stderr, "Unrecognized legend draw:",self.cfg["legend"]["draw"]
 			   raise TypeError
@@ -410,20 +422,20 @@ class Plotter:
 
 		for p1 in self.cfg["legend"]["legendList"]:
 			for name in p1.split(','):
-				if "label" in cfg[name] : mylabel=cfg[name]["label"]
+				if "label" in self.cfg[name] : mylabel=self.cfg[name]["label"]
 				else: mylabel = name
 
 				mylabel=ParseStr(mylabel)
 
-				if cfg[name]["style"].lower() == "marker": 
+				if self.cfg[name]["style"].lower() == "marker": 
 					mytype = "P"
 					if BoolKey(name,"xerror"):
 						mytype += "L"
 					if BoolKey(name,"yerror"):
 						mytype += "E"
-				if cfg[name]["style"].lower() == "line": 
+				if self.cfg[name]["style"].lower() == "line": 
 					mytype = "L"
-				if cfg[name]["style"].lower() == "band": 
+				if self.cfg[name]["style"].lower() == "band": 
 					mytype = "F"
 				e=l.AddEntry(self.collection.Get(name),mylabel,mytype)
 				e.SetTextFont(43)
@@ -431,18 +443,21 @@ class Plotter:
 		l.Draw()
 
 		return self
-	def DrawObjects():
+
+	def DrawObjects(self):
+		''' Draw all objects in the collection'''
 		for x in self.collection:
 			x.Draw()
 		return self
-	def DrawCanvas():
+
+	def DrawCanvas(self):
 		# CREATE CANVAS
-		if "canv" not in cfg["base"]:
+		if "canv" not in self.cfg["base"]:
 			self.canv=ROOT.TCanvas("canv","canv",800,800)
 		else:
 			self.canv=ROOT.TCanvas("canv","canv",
-					int(self.cfg["base"]["canv"].split(',')[0]),
-					int(self.cfg["base"]["canv"].split(',')[1]),
+					int(self.self.cfg["base"]["canv"].split(',')[0]),
+					int(self.self.cfg["base"]["canv"].split(',')[1]),
 					)
 		if BoolKey("base","ratio",True):
 			self.pad1=ROOT.TPad("p1","p1",0,self.ratiofraction,1,1)
@@ -454,19 +469,19 @@ class Plotter:
 			self.pad2=None
 		self.pad1.cd()
 		## Draw AXIS from the first
-		base = cfg["base"]["drawList"].split(',')[0]	
-		if cfg[base]["type"].lower() == "th1d":
+		base = self.cfg["base"]["drawList"].split(',')[0]	
+		if self.cfg[base]["type"].lower() == "th1d":
 			xmin = self.collection.Get(base).GetBinLowEdge(1)
 			n= self.collection.Get(base).GetNbinsX()
 			xmax = self.collection.Get(base).GetBinLowEdge(n+1)
 			ymin = self.collection.Get(base).GetMinimum()
 			ymax = self.collection.Get(base).GetMaximum()
 		if BoolKey("base","xRange",True):
-			xmin=float( cfg["base"]["xRange"].split(',')[0]  )
-			xmax=float( cfg["base"]["xRange"].split(',')[1]  )
+			xmin=float( self.cfg["base"]["xRange"].split(',')[0]  )
+			xmax=float( self.cfg["base"]["xRange"].split(',')[1]  )
 		if BoolKey("base","yRange",True):
-			ymin=float( cfg["base"]["yRange"].split(',')[0]  )
-			ymax=float( cfg["base"]["yRange"].split(',')[1]  )
+			ymin=float( self.cfg["base"]["yRange"].split(',')[0]  )
+			ymax=float( self.cfg["base"]["yRange"].split(',')[1]  )
 
 		axisHist= ROOT.TH2D("axis","axis",100,xmin,xmax,100,ymin,ymax)
 		axisHist.Draw("AXIS")
@@ -476,15 +491,15 @@ class Plotter:
 		if BoolKey("base","yLog"): self.pad1.SetLogy()
 		return self
 
-	def RedrawAxis():
+	def RedrawAxis(self):
 		self.pad1.cd()
 		axisHist.Draw("AXIS SAME")
 		axisHist.Draw("AXIS X+ Y+ SAME")
 		return self
 
-	def MakeRatio():
-		ratioBaseName=cfg["base"]["ratio"]
-		if ratioBaseName not in cfg: 
+	def MakeRatio(self):
+		ratioBaseName=self.cfg["base"]["ratio"]
+		if ratioBaseName not in self.cfg: 
 			print >>sys.stderr,"Ratio Base name referred to a non configured histo",ratioBaseName
 			raise NameError
 		b=self.collection.Get(ratioBaseName).Clone(ratioBaseName + "_ratiobase")
@@ -494,21 +509,22 @@ class Plotter:
 		## perform the division
 		return self
 
-	def DrawRatio():
+	def DrawRatio(self):
 		self.pad2.cd()
 		return self
 
-	def Draw():
+	def Draw(self):
 		Style().DrawCanvas().DrawObjects().DrawLegend().DrawCMS().RedrawAxis()
 		if BoolKey("base","ratio",True):
 			MakeRatio().DrawRatio()
 		return self
 
-	def Save():
+	def Save(self):
 		for ext in self.cfg["base"]["format"].split(','):
 			self.canv.SaveAs( self.cfg["base"]["output"] + "."+ext)
 		return self
-	def Style():
+
+	def Style(self):
 		''' Set Style TDR'''
 		ROOT.gStyle.SetOptTitle(0)
 		ROOT.gStyle.SetPadTopMargin(0.05)
@@ -548,5 +564,5 @@ class Plotter:
 		ROOT.gStyle.SetCanvasDefX(0);   #Position on screen
 		ROOT.gStyle.SetCanvasDefY(0);
 		return self
-
+#### END ####
 
