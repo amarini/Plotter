@@ -386,6 +386,39 @@ class Plotter:
 
 		return self
 
+	def DrawLogo(self):
+		''' Draw a logo on Top of the plot'''
+		if "logo" not in self.cfg: return self
+		if "draw" not in self.cfg["logo"]: return self
+		if not self.BoolKey("logo","draw") : return self
+		if "file" not in self.cfg["logo"]: 
+			print >>sys.stderr, "You need to specify a file for the logo"
+			raise NameError
+		print "DEBUG LOGO: loading image",self.cfg["logo"]["file"]
+
+		i=ROOT.TASImage(self.cfg["logo"]["file"])
+		size=0.1
+		if "size" in self.cfg["logo"]:
+			size= float( self.cfg["logo"]["size"])
+		xh=1-self.canv.GetRightMargin() -0.01 ## TODO use pad and Pad dimension to figure it out
+		yh=1-self.canv.GetTopMargin() -0.01
+		xl=xh-size
+		yl=yh-size
+
+		if "position" in self.cfg["logo"]:
+			xl= float(  self.cfg["logo"]["position"].split(',')[0]   )
+			yl= float(  self.cfg["logo"]["position"].split(',')[1]   )
+			xh= float(  self.cfg["logo"]["position"].split(',')[2]   )
+			yh= float(  self.cfg["logo"]["position"].split(',')[3]   )
+		self.padlogo=ROOT.TPad("padlogo","logo",xl,yl,xh,yh)
+		self.padlogo.Draw()
+		self.padlogo.cd()
+		i.Draw()
+		self.garbage.append(i)
+		self.pad1.cd()
+
+		return self
+
 	def ParseStr(self, string):
 		''' Standard reparsing in the configfile for displayed text'''
 		r=re.sub('~',' ',string)
@@ -584,7 +617,7 @@ class Plotter:
 		return self
 
 	def Draw(self):
-		self.Style().DrawCanvas().DrawObjects().DrawLegend().DrawCMS().RedrawAxis()
+		self.Style().DrawCanvas().DrawObjects().DrawLegend().DrawCMS().DrawLogo().RedrawAxis()
 		if self.BoolKey("base","ratio",True):
 			self.MakeRatio().DrawRatio()
 		return self

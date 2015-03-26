@@ -31,7 +31,15 @@
 ##            dtl/dtr/dbl/dbr  ## two lines
 ## lumi = 19.7~(8TeV)... ~->' '
 ## extra = x!y!text      ~->' ' @
-##
+
+########################
+## Logo Configuration ##
+########################
+# draw=True/False
+# file=file.gif only gif
+# size= 0.1 # for the top right corner
+# position= xl,yl,xh,yh
+
 #########################
 ## Histo Configuration ##
 #########################
