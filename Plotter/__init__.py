@@ -423,6 +423,8 @@ class Plotter:
 		latex = ROOT.TLatex()
 		latex.SetNDC()
 		latex.SetTextSize(0.04)
+		# scale if raito
+		if self.BoolKey("ratio","draw"): latex.SetTextSize(0.04/(1.-self.ratiofraction))
 		latex.SetTextFont(42)
 		mytext="CMS"
 		if self.cfg["text"]["text"].lower() == "cms": mytext="#bf{CMS}"
