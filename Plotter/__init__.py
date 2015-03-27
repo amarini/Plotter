@@ -25,6 +25,7 @@ class BaseDraw(object): # object "newclass type", make super and co behave diffe
 		self.obj = None
 		self.drawerrors=False
 		self.legendobj=None
+		self.draw = False
 		pass 
 
 	def __del__(self):
@@ -52,6 +53,7 @@ class BaseDraw(object): # object "newclass type", make super and co behave diffe
 		return self
 
 	def CopyStyle(self, other ):
+		self.draw = other.draw
 		self.style = other.style
 		self.styleopt= other.styleopt
 		self.color= other.color
@@ -93,6 +95,7 @@ class Collection:
 		self.names[:] = [x for x in self.names and x != name ]
 		return self
 	def Get(self, name):
+		if name not in self.objs: return None
 		return self.objs[name]
 
 	def GetName(self, x):
@@ -290,6 +293,7 @@ class Plotter:
 		self.entrysize=24
 		self.ratiofraction=0.2
 		self.axisHist=None
+		self.fROOT= ROOT.TFile.Open( cfg["base"]["output"]+ ".root","RECREATE")
 		self.garbage=[] ## it's not garbag
 		## sanity checks
 		if "base" not in cfg: raise TypeError
@@ -313,19 +317,73 @@ class Plotter:
 			self.LoadObj( name )
 	def __del__(self):
 		pass
-	def LoadObj(self, name):
+	def LoadObj(self, name, draw=True):
+		'''Load Object '''
+		#already loaded -- set it drawable if called with draw
+		if self.collection.Get(name) != None: 
+			if draw: self.collection.Get(name).draw=True
+			return self
+
 		if self.verbose:
 			print "--- Loading Histo "+name+" ---"
-		if "file" not in self.cfg[name]: 
+
+		if "file" not in self.cfg[name] and self.cfg[name]["type"] != "sqrsum" and self.cfg[name]["type"] != "stack": 
 			print >>sys.stderr, "file not specified in cfg for histo", name
 			raise TypeError
 		if "obj"  not in self.cfg[name]:
 			print >>sys.stderr, "obj not specified in cfg for histo", name
 			raise TypeError
-		f = ROOT.TFile.Open(self.cfg[name]["file"] )
-		h = f.Get(self.cfg[name]["obj"])
+
+		if self.cfg[name]["type"].lower() == "envelope":
+			obj=Histo()
+			obj.fillstyle=self.ColorKey(name,"fillstyle")
+			obj.fillcolor=self.ColorKey(name,"fillcolor")
+			for index,objName in enumerate(self.cfg[name]["obj"].split(',')):
+				if ',' in self.cfg[name]["file"]:
+					fName=self.cfg[name]["file"].split(',')[index]
+					f = ROOT.TFile.Open(fName)
+				else: 
+					f = ROOT.TFile.Open(self.cfg[name]["file"] )
+				self.fROOT.cd()
+				o=f.Get(objName).Clone()
+				f.Close()
+				f=None
+				if index == 0 : 
+					obj.obj = o
+					for i in range(1,obj.obj.GetNbinsX()+1):
+						obj.obj.SetBinError(i,0)
+				else:
+					for i in range(1,obj.obj.GetNbinsX()+1):
+						## assumes compatibles bin
+						c= obj.obj.GetBinContent(i)
+						e= obj.obj.GetBinError(i)
+						up= c+e
+						dn= c-e
+						val = o.GetBinContent(i)
+						if val > up: up=val
+						elif val< dn : dn=val
+						else: pass
+						c = (up + dn) /2.
+						e = (up - dn)/2.
+						obj.obj.SetBinContent(i,c)
+						obj.obj.SetBinError(i,e)
+		elif self.cfg[name]["type"].lower() == "sqrsum":
+			obj=Histo()
+			obj.fillstyle=self.ColorKey(name,"fillstyle")
+			obj.fillcolor=self.ColorKey(name,"fillcolor")
+			for objName in self.cfg[name]["obj"].split(","):
+				LoadObj(name,False)
+
+		elif self.cfg[name]["type"].lower() == "stack":
+			print "STACK TO DO"
+
+		else:
+			f = ROOT.TFile.Open(self.cfg[name]["file"] )
+			self.fROOT.cd()
+			h = f.Get(self.cfg[name]["obj"]).Clone(name)
+
 		#TODO -> TH2D
-		if self.cfg[name]["type"].lower() ==  "th1d":
+		if self.cfg[name]["type"].lower() ==  "th1d" or self.cfg[name]["type"].lower() == "th1":
 			obj=Histo()
 			obj.obj = h
 			obj.fillstyle=self.ColorKey(name,"fillstyle")
@@ -334,6 +392,7 @@ class Plotter:
 		if self.cfg[name]["type"].lower() == "tgraph":
 			obj=Graph()
 			obj.obj = h
+			
 		if self.BoolKey(name,"xerror") or self.BoolKey(name,"yerror"):
 			obj.drawerrors=True
 		if self.BoolKey(name,"xerror"): 
@@ -353,7 +412,10 @@ class Plotter:
 		if "shift" in self.cfg[name]: obj.shift = float(self.cfg[name]["shift"])
 		if "width" in self.cfg[name]: obj.width = int(self.cfg[name]["width"])
 		#
+		obj.draw = draw
 		self.collection.Add(name,obj)
+
+		#if f!=None: f.Close()
 		return self
 	# public 
 	def DrawCMS(self):
@@ -430,7 +492,7 @@ class Plotter:
 		if "size" in self.cfg["logo"]:
 			size= float( self.cfg["logo"]["size"])
 		xh=1-self.canv.GetRightMargin() -0.01 ## TODO use pad and Pad dimension to figure it out
-		yh=1-self.canv.GetTopMargin() -0.01
+		yh=1-self.pad1.GetTopMargin()/(1.-self.ratiofraction) -0.01
 		xl=xh-size
 		yl=yh-size
 
@@ -565,7 +627,7 @@ class Plotter:
 	def DrawObjects(self):
 		''' Draw all objects in the collection'''
 		for x in self.collection:
-			x.Draw()
+			if x.draw: x.Draw()
 		return self
 
 	def DrawCanvas(self):
@@ -595,7 +657,7 @@ class Plotter:
 		self.pad1.cd()
 		## Draw AXIS from the first
 		base = self.cfg["base"]["drawlist"].split(',')[0]	
-		if self.cfg[base]["type"].lower() == "th1d":
+		if self.cfg[base]["type"].lower() == "th1d" or self.cfg[base]["type"].lower() == "th1":
 			xmin = self.collection.Get(base).obj.GetBinLowEdge(1)
 			n= self.collection.Get(base).obj.GetNbinsX()
 			xmax = self.collection.Get(base).obj.GetBinLowEdge(n+1)
@@ -724,7 +786,7 @@ class Plotter:
 		self.ratioaxisHist.Draw("AXIS ")
 		self.ratioaxisHist.Draw("AXIS X+Y+ SAME")
 		for x in self.collectionratio:
-			x.Draw()
+			if x.draw: x.Draw()
 		self.pad1.cd()
 		return self
 
@@ -738,6 +800,9 @@ class Plotter:
 		self.canv.Modified()
 		self.canv.Update()
 		for ext in self.cfg["base"]["format"].split(','):
+			if ext =="root":
+				self.fROOT.cd()
+				self.canv.Write()
 			self.canv.SaveAs( self.cfg["base"]["output"] + "."+ext)
 		return self
 
