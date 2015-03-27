@@ -95,6 +95,11 @@ class Collection:
 	def Get(self, name):
 		return self.objs[name]
 
+	def GetName(self, x):
+		for n in self.names:
+			if self.objs[n]==x: return n
+		return "Not Found"
+
 class Graph(BaseDraw):
 	''' Implement a Graph object '''
 	def __init__(self):
@@ -199,6 +204,21 @@ class Histo(BaseDraw):
 		# for markers and bands
 		self.shift=0
 		self.length=0
+		#fill for line
+		self.fillcolor = 0
+		self.fillstyle = 0
+
+	def CopyStyle(self, other):
+		super(Histo, self).CopyStyle(other)
+		# check if called from BaseDraw
+		if isinstance(other,Histo):
+			self.shift=other.shift
+			self.length=other.length
+			self.fillcolor=other.fillcolor
+			self.fillstyle=other.fillstyle
+			self.xerror=other.xerror
+			self.yerror=other.yerror
+		return self
 
 	def ConvertToGraph(self):
 		''' Convert the current histogram to a Graph'''
@@ -244,6 +264,9 @@ class Histo(BaseDraw):
 		elif self.style == self.styles["line"]:
 			self.hist.SetLineColor(self.color)
 			self.hist.SetLineWidth(self.width)
+			if self.fillstyle>0:
+				self.hist.SetFillStyle(self.fillstyle)
+				self.hist.SetFillColor(self.fillcolor)
 			#print "Setting line style for Histo",self.hist.GetName(),"to",self.styleopt
 			self.hist.SetLineStyle(self.styleopt)
 			self.hist.Draw("HIST SAME")
@@ -277,6 +300,9 @@ class Plotter:
 		if "legend" not in cfg: 
 			self.cfg["legend"] ={}
 			self.cfg["legend"]["draw"]="False"
+		if "ratio" not in cfg:
+			self.cfg["ratio"]={}
+			self.cfg["ratio"]["draw"]="False"
 
 		for name in cfg["base"]["drawlist"].split(','):
 			if self.verbose >0: print "-> Adding Object '"+name+"' to the list to be drawn"
@@ -302,6 +328,9 @@ class Plotter:
 		if self.cfg[name]["type"].lower() ==  "th1d":
 			obj=Histo()
 			obj.obj = h
+			obj.fillstyle=self.ColorKey(name,"fillstyle")
+			obj.fillcolor=self.ColorKey(name,"fillcolor")
+
 		if self.cfg[name]["type"].lower() == "tgraph":
 			obj=Graph()
 			obj.obj = h
@@ -548,9 +577,16 @@ class Plotter:
 					int(self.cfg["base"]["canv"].split(',')[0]),
 					int(self.cfg["base"]["canv"].split(',')[1]),
 					)
-		if self.BoolKey("base","ratio",True):
+		if self.BoolKey("ratio","draw"):
+			if "fraction" in self.cfg["ratio"]: self.ratiofraction= float(self.cfg["ratio"]["fraction"] )
 			self.pad1=ROOT.TPad("p1","p1",0,self.ratiofraction,1,1)
 			self.pad2=ROOT.TPad("p2","p2",0,0,1,self.ratiofraction)
+			self.pad1.SetBottomMargin(0) ## one on top of the other
+			self.pad2.SetTopMargin(0)
+
+			self.pad2.SetBottomMargin(0.3)
+			self.pad1.SetTopMargin(0.05/(1.-self.ratiofraction))
+
 			self.pad1.Draw()
 			self.pad2.Draw()
 		else:
@@ -586,6 +622,16 @@ class Plotter:
 		axisHist.GetYaxis().SetTitle(ytitle)
 		axisHist.GetXaxis().SetTitleOffset(1.2)
 		axisHist.GetYaxis().SetTitleOffset(1.5)
+
+		axisHist.GetXaxis().SetTitleFont(43) # in point, maybe configurable ?
+		axisHist.GetXaxis().SetTitleSize(24)
+		axisHist.GetXaxis().SetLabelFont(43)
+		axisHist.GetXaxis().SetLabelSize(20)
+		axisHist.GetYaxis().SetTitleFont(43) # in point
+		axisHist.GetYaxis().SetTitleSize(24)
+		axisHist.GetYaxis().SetLabelFont(43)
+		axisHist.GetYaxis().SetLabelSize(20)
+
 		##
 		axisHist.Draw("AXIS")
 		axisHist.Draw("AXIS X+Y+ SAME")
@@ -601,24 +647,90 @@ class Plotter:
 		return self
 
 	def MakeRatio(self):
-		ratioBaseName=self.cfg["base"]["ratio"]
+		ratioBaseName=self.cfg["ratio"]["base"]
 		if ratioBaseName not in self.cfg: 
 			print >>sys.stderr,"Ratio Base name referred to a non configured histo",ratioBaseName
 			raise NameError
-		b=self.collection.Get(ratioBaseName).Clone(ratioBaseName + "_ratiobase")
+		self.ratiobase=self.collection.Get(ratioBaseName).obj.Clone(ratioBaseName + "_ratiobase")
+		if not isinstance(self.collection.Get(ratioBaseName),Histo):
+			print >>sys.stderr, "Ratio non implemented for base different from histo (TH1)"
+			raise TypeError
 		## TODO:
 		## reset errors
+		## ASSUMPTION: base is a TH1
+		for i in range(1,self.ratiobase.GetNbinsX()+1): self.ratiobase.SetBinError(i,0)
 		## clone the collection in collratio
-		## perform the division
+		self.collectionratio=Collection()
+		## and perform the division
+		for o in self.collection:
+			if isinstance(o,Graph):
+				t = Graph()
+				t.Empty(o.obj.GetName() + "_ratio")
+				for i in range(0,o.obj.GetN()):
+					x = t.graph.GetX()[i]
+					y = t.graph.GetY()[i]
+					exl = t.graph.GetEXlow()[i]
+					exh = t.graph.GetEXhigh()[i]
+					eyl = t.graph.GetEYlow()[i]
+					eyh = t.graph.GetEYhigh()[i]
+					if ( x< self.ratiobase.GetBinLowEdge(i) or x > self.ratiobase.GetBinLowEdge(i+1) ):
+							print >>sys.stderr, "Warning: Possible mistake in bin range conversion from histo to graph"
+					val = self.ratiobase.GetBinContent(i)
+					y /=  val
+					eyl /= val
+					eyh /= val
+					t.AddPointAsymmErrors( x, y, exl, exh, eyl, eyh)
+				name = self.collection.GetName(o)
+				t.CopyStyle(o)
+				self.collectionratio.Add(name,t)
+			elif isinstance(o,Histo):
+				t = Histo()
+				t.obj = o.obj.Clone(o.obj.GetName() + "_ratio")
+				## assume same binning
+				t.obj.Divide(self.ratiobase)
+				t.CopyStyle(o)
+				name = self.collection.GetName(o)
+				self.collectionratio.Add(name,t)
+			
+			else: 
+				print >>sys.stderr,"class not implemented in ratio"
 		return self
 
 	def DrawRatio(self):
 		self.pad2.cd()
+		xmin = self.axisHist.GetXaxis().GetXmin()
+		xmax = self.axisHist.GetXaxis().GetXmax()
+		ymin = 0.5
+		ymax = 1.5
+
+		if self.BoolKey("ratio","yrange",True):
+			ymin=float( self.cfg["ratio"]["yrange"].split(',')[0]  )
+			ymax=float( self.cfg["ratio"]["yrange"].split(',')[1]  )
+
+		self.ratioaxisHist = ROOT.TH2D("axisR","axisR",100,xmin,xmax,100,ymin,ymax)
+		for axis in ["GetXaxis()","GetYaxis()"]:
+			for tocopy in ["Title","TitleOffset","TitleFont","TitleSize","LabelFont","LabelSize"]:
+				exec("self.ratioaxisHist."+axis+".Set"+tocopy+"( self.axisHist."+axis+".Get" + tocopy +"()" +")")
+		## adjust Title Offset
+		offset = self.ratioaxisHist.GetXaxis().GetTitleOffset()
+		self.ratioaxisHist.GetXaxis().SetTitleOffset( offset/self.ratiofraction * 0.7 ) # magic number
+		length = self.axisHist.GetTickLength()
+		self.ratioaxisHist.GetXaxis().SetTickLength( length / self.ratiofraction * 0.7)
+		self.ratioaxisHist.GetYaxis().SetNdivisions(505)
+		##
+		if "ytitle" in self.cfg["ratio"]:
+			self.ratioaxisHist.GetYaxis().SetTitle( self.ParseStr(self.cfg["ratio"]["ytitle"] ))
+		
+		self.ratioaxisHist.Draw("AXIS ")
+		self.ratioaxisHist.Draw("AXIS X+Y+ SAME")
+		for x in self.collectionratio:
+			x.Draw()
+		self.pad1.cd()
 		return self
 
 	def Draw(self):
 		self.Style().DrawCanvas().DrawObjects().DrawLegend().DrawCMS().DrawLogo().RedrawAxis()
-		if self.BoolKey("base","ratio",True):
+		if self.BoolKey("ratio","draw"):
 			self.MakeRatio().DrawRatio()
 		return self
 

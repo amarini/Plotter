@@ -1,11 +1,11 @@
 ########################
 ## Base Configuration ##
 ########################
+## [base]
 ## type = 1D, 2D
 ## text = CMS, Preliminary, Unpublished
 ## yrange = 0,1
 ## canv = 800,800
-## ratio = Name, None/False do ratio plot with respect the histo name=Name
 ## yLog = False, True
 ## xLog = False, True
 ## xTitle = True,False,Text
@@ -15,9 +15,21 @@
 ## output= outputName
 ## format= pdf,root ... list
 ## verbose = 1
+
+#########################
+## Ratio Configuration ##
+#########################
+## [ratio]
+## draw = True/None/False
+## base = name  ## denominator, for now TH1
+## fraction = 0.2
+## yrange = True/False/x0,x1
+## ytitle = 
+
 ##########################
 ## Legend Configuration ##
 ##########################
+## [legend]
 ## draw = True/False
 ## position = 0.7,.7,.9,.9
 ## header = myheader # optional
@@ -26,6 +38,7 @@
 ##########################
 ## Text   Configuration ##
 ##########################
+## [text]
 ## text = cms/preliminary/unpublished
 ## position = tl/tr/bl/br ## implemented only tl so far
 ##            dtl/dtr/dbl/dbr  ## two lines
@@ -35,10 +48,11 @@
 ########################
 ## Logo Configuration ##
 ########################
-# draw=True/False
-# file=file.gif only gif
-# size= 0.1 # for the top right corner
-# position= xl,yl,xh,yh
+## [logo]
+## draw=True/False
+## file=file.gif only gif
+## size= 0.1 # for the top right corner
+## position= xl,yl,xh,yh
 
 #########################
 ## Histo Configuration ##
@@ -55,6 +69,8 @@
 ##              xerror=False
 ##  -> band     shift = 0 
 ##              len =0  #all
+##  -> line     fillstyle=0
+##              fillcolor=0
 ##  color = ROOT.kRed / RGB,0.7,0.8,.9 / 21
 ##  label = legend label
 
