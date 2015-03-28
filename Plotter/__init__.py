@@ -58,8 +58,6 @@ class BaseDraw(object): # object "newclass type", make super and co behave diffe
 		self.styleopt= other.styleopt
 		self.color= other.color
 		self.width = other.width
-		self.shift = other.shift
-		self.length = other.length
 		self.drawerrors= other.drawerrors
 		return self
 
@@ -80,7 +78,6 @@ class Collection:
 	#def next(self):
 		if self.cur < len(self) :
 			self.cur +=1 
-			#print "NEXT-DEBUG: RETURNING",self.objs[ self.names[ self.cur - 1  ] ]
 			return self.objs[ self.names[ self.cur - 1  ] ]
 		else: 
 			raise StopIteration
@@ -210,6 +207,9 @@ class Histo(BaseDraw):
 		#fill for line
 		self.fillcolor = 0
 		self.fillstyle = 0
+	
+	def __del__(self):
+		pass
 
 	def CopyStyle(self, other):
 		super(Histo, self).CopyStyle(other)
@@ -233,7 +233,6 @@ class Histo(BaseDraw):
 		for i in range(1, self.hist.GetNbinsX()+1):
 			ex=0
 			if self.xerror:
-				#print "DEBUG: setting Histo ex to bin width for h",self.hist.GetName()
 				ex=self.hist.GetBinWidth(i)/2.
 
 			x = self.hist.GetBinCenter(i)
@@ -289,16 +288,22 @@ class Histo(BaseDraw):
 
 class Stack(BaseDraw):
 	'''Implemantation of a THStack'''
-	def __init__(self):
+	def __init__(self,name="mystack"):
 		super(Stack, self).__init__()
 		self.stack=ROOT.THStack()
 		self.legendobj=self.stack
 		self.obj=self.stack
+		self.obj.SetName(name)
+		self.hists=[]
+
+	def __del__(self):
+		pass
 
 	def Add(self, h):
 		''' Add a Histo to the stack'''
 		h.SetDrawOptions()
 		self.stack.Add(h.obj)
+		self.hists.append( h )  ## for garbage collector
 		return self
 
 	def Draw(self):
@@ -350,6 +355,9 @@ class Plotter:
 			##### Create obj
 			self.LoadObj( name )
 	def __del__(self):
+		if self.collection: del self.collection
+		if self.collectionratio:del self.collectionratio
+		self.fROOT.Close()
 		pass
 	def LoadObj(self, name, draw=True):
 		'''Load Object '''
@@ -410,7 +418,7 @@ class Plotter:
 				LoadObj(name,False)
 
 		elif self.cfg[name]["type"].lower() == "stack":
-			obj=Stack()
+			obj=Stack(name)
 			for objName in self.cfg[name]["obj"].split(","):
 				self.LoadObj(objName,False)
 				obj.Add( self.collection.Get(objName) )
@@ -531,7 +539,7 @@ class Plotter:
 		if "file" not in self.cfg["logo"]: 
 			print >>sys.stderr, "You need to specify a file for the logo"
 			raise NameError
-		print "DEBUG LOGO: loading image",self.cfg["logo"]["file"]
+		if self.verbose>0: "loading image",self.cfg["logo"]["file"]
 
 		i=ROOT.TASImage(self.cfg["logo"]["file"])
 		size=0.1
@@ -676,7 +684,11 @@ class Plotter:
 
 	def DrawObjects(self):
 		''' Draw all objects in the collection'''
-		for x in self.collection:
+		#for x in self.collection:
+		for xName in self.cfg["base"]["drawlist"].split(","):
+			#if self.verbose>0: print "darwing object:", self.collection.GetName(x)
+			if self.verbose>0: print "darwing object:", xName
+			x=self.collection.Get(xName)
 			if x.draw: x.Draw()
 		return self
 
@@ -763,11 +775,15 @@ class Plotter:
 		if ratioBaseName not in self.cfg: 
 			print >>sys.stderr,"Ratio Base name referred to a non configured histo",ratioBaseName
 			raise NameError
-		self.ratiobase=self.collection.Get(ratioBaseName).obj.Clone(ratioBaseName + "_ratiobase")
-		if not isinstance(self.collection.Get(ratioBaseName),Histo):
-			print >>sys.stderr, "Ratio non implemented for base different from histo (TH1)"
+		if not isinstance(self.collection.Get(ratioBaseName),Histo) and \
+				not isinstance(self.collection.Get(ratioBaseName),Stack) :
+			print >>sys.stderr, "Ratio not implemented for base different from histo (TH1)"
 			raise TypeError
-		## TODO:
+
+		if isinstance(self.collection.Get(ratioBaseName),Histo):
+			self.ratiobase=self.collection.Get(ratioBaseName).obj.Clone(ratioBaseName + "_ratiobase")
+		elif isinstance(self.collection.Get(ratioBaseName),Stack): ##THSTack
+			self.ratiobase=self.collection.Get(ratioBaseName).obj.GetHistogram().Clone(ratioBaseName + "_ratiobase")
 		## reset errors
 		## ASSUMPTION: base is a TH1
 		for i in range(1,self.ratiobase.GetNbinsX()+1): self.ratiobase.SetBinError(i,0)
@@ -775,6 +791,11 @@ class Plotter:
 		self.collectionratio=Collection()
 		## and perform the division
 		for o in self.collection:
+			name=self.collection.GetName(o)
+			
+			#if it is specified the list used it
+			if "drawlist" in self.cfg["ratio"] and not name in self.cfg["ratio"]["drawlist"].split(","): continue
+			
 			if isinstance(o,Graph):
 				t = Graph()
 				t.Empty(o.obj.GetName() + "_ratio")
@@ -792,7 +813,6 @@ class Plotter:
 					eyl /= val
 					eyh /= val
 					t.AddPointAsymmErrors( x, y, exl, exh, eyl, eyh)
-				name = self.collection.GetName(o)
 				t.CopyStyle(o)
 				self.collectionratio.Add(name,t)
 			elif isinstance(o,Histo):
@@ -801,9 +821,26 @@ class Plotter:
 				## assume same binning
 				t.obj.Divide(self.ratiobase)
 				t.CopyStyle(o)
-				name = self.collection.GetName(o)
 				self.collectionratio.Add(name,t)
-			
+
+			elif isinstance(o,Stack):	
+				self.fROOT.cd() ##???
+				t = Stack(o.obj.GetName() + "_ratio")
+				t.CopyStyle(o)
+				for h in o.hists: ##Histos
+					myh= Histo()
+					myh.obj = h.obj.Clone(h.obj.GetName() + "_ratio")
+					myh.obj.Divide(self.ratiobase)
+					myh.CopyStyle(h)
+					t.Add(myh)
+
+				#for h in o.obj.GetHists():
+				#	h2 = h.Clone(h.GetName() + "_ratio")
+				#	h2.Divide(self.ratiobase)
+				#	t.obj.Add( h2 )
+
+				self.collectionratio.Add(name,t)
+
 			else: 
 				print >>sys.stderr,"class not implemented in ratio"
 		return self
@@ -834,10 +871,21 @@ class Plotter:
 			self.ratioaxisHist.GetYaxis().SetTitle( self.ParseStr(self.cfg["ratio"]["ytitle"] ))
 		
 		self.ratioaxisHist.Draw("AXIS ")
-		self.ratioaxisHist.Draw("AXIS X+Y+ SAME")
-		for x in self.collectionratio:
+		
+		if 'drawlist' in self.cfg["ratio"]: nameList =  self.cfg["ratio"]["drawlist"].split(',')
+		else: nameList =  self.cfg["base"]["drawlist"].split(',')
+
+		#for x in self.collectionratio:
+		for xName in nameList: #preserve order!
+			x=self.collectionratio.Get(xName)
 			if x.draw: x.Draw()
+
+		#redraw axis
+		self.ratioaxisHist.Draw("AXIS X+Y+ SAME")
+		self.ratioaxisHist.Draw("AXIS  SAME")
+		#
 		self.pad1.cd()
+		#
 		return self
 
 	def Draw(self):
@@ -895,6 +943,8 @@ class Plotter:
 		ROOT.gStyle.SetCanvasDefW(600); #Width of canvas
 		ROOT.gStyle.SetCanvasDefX(0);   #Position on screen
 		ROOT.gStyle.SetCanvasDefY(0);
+		## EXTRA
+		ROOT.gStyle.SetHatchesLineWidth(3)
 		return self
 #### END ####
 
