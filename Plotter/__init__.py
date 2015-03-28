@@ -333,9 +333,14 @@ class Plotter:
 		if "legend" not in cfg: 
 			self.cfg["legend"] ={}
 			self.cfg["legend"]["draw"]="False"
+
 		if "ratio" not in cfg:
 			self.cfg["ratio"]={}
 			self.cfg["ratio"]["draw"]="False"
+
+		if "verbose" in self.cfg["base"]:
+			self.verbose += int(self.cfg["base"]["verbose"])
+			print "-> Changed verbosity level to", self.verbose
 
 		for name in cfg["base"]["drawlist"].split(','):
 			if self.verbose >0: print "-> Adding Object '"+name+"' to the list to be drawn"
@@ -359,6 +364,7 @@ class Plotter:
 		if "file" not in self.cfg[name] and self.cfg[name]["type"] != "sqrsum" and self.cfg[name]["type"] != "stack": 
 			print >>sys.stderr, "file not specified in cfg for histo", name
 			raise TypeError
+
 		if "obj"  not in self.cfg[name]:
 			print >>sys.stderr, "obj not specified in cfg for histo", name
 			raise TypeError
@@ -406,8 +412,8 @@ class Plotter:
 		elif self.cfg[name]["type"].lower() == "stack":
 			obj=Stack()
 			for objName in self.cfg[name]["obj"].split(","):
-				LoadObj(name,False)
-				obj.Add( self.collection.Get(name) )
+				self.LoadObj(objName,False)
+				obj.Add( self.collection.Get(objName) )
 
 		else: ## th1/tgraph
 			f = ROOT.TFile.Open(self.cfg[name]["file"] )
@@ -648,8 +654,12 @@ class Plotter:
 					mytype += "L"
 				if self.BoolKey(name,"yerror"):
 					mytype += "E"
+
 			if self.cfg[name]["style"].lower() == "line": 
 				mytype = "L"
+				if self.collection.Get(name).fillstyle >0 and self.collection.Get(name).fillcolor >0:
+					mytype = "F"
+
 			if self.cfg[name]["style"].lower() == "band": 
 				mytype = "F"
 			#if self.verbose>0:

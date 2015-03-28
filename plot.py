@@ -26,9 +26,13 @@ for sect in _cfg.sections():
 	for (name, value) in _cfg.items(sect):
 		if opts.verbose: print "* ",name," = ",value
 		cfg[sect][name] = value
-	if opts.verbose:
-		if "verbose" in cfg["base"]: cfg["base"]["verbose"]+=1
-		else: cfg["base"]["verbose"]=1
+
+if opts.verbose:
+	if "verbose" in cfg["base"]: 
+		vLevel = int( cfg["base"]["verbose"]) + 1
+		cfg["base"]["verbose"] = str(vLevel)
+	else: cfg["base"]["verbose"]="1"
+	print "--> Current Verbosity level is ", cfg["base"]["verbose"]
 
 print "--- Loading Plotter ---" 
 import Plotter
