@@ -251,20 +251,16 @@ class Histo(BaseDraw):
 			g.AddPoint(  x, y, ex, ey ) 
 		return g
 
-	def Draw(self):
-		'''Draw'''
-		if self.xerror or self.yerror: self.drawerrors=True # update info
-
+	def SetDrawOptions(self):
+		''' Set the styles, but do not draw'''
 		if self.hist == None: self.hist=self.obj  #update ref
-		##
 		if self.style==self.styles["marker"] or \
 			self.style==self.styles["band"]:
 			# transform it to a Graph
 			self.mygraph=self.ConvertToGraph()
-			self.mygraph.Draw()
+			#self.mygraph.Draw()
 			self.legendobj=self.mygraph.obj
-
-		elif self.style == self.styles["line"]:
+		if self.style == self.styles["line"]:
 			self.hist.SetLineColor(self.color)
 			self.hist.SetLineWidth(self.width)
 			if self.fillstyle>0:
@@ -272,9 +268,42 @@ class Histo(BaseDraw):
 				self.hist.SetFillColor(self.fillcolor)
 			#print "Setting line style for Histo",self.hist.GetName(),"to",self.styleopt
 			self.hist.SetLineStyle(self.styleopt)
-			self.hist.Draw("HIST SAME")
 			self.legendobj=self.hist
+		return self
 
+	def Draw(self):
+		'''Draw'''
+		if self.xerror or self.yerror: self.drawerrors=True # update info
+
+		self.SetDrawOptions()
+
+		##
+		if self.style==self.styles["marker"] or \
+		   self.style==self.styles["band"]:
+			self.mygraph.Draw()
+
+		elif self.style == self.styles["line"]:
+			self.hist.Draw("HIST SAME")
+
+		return self
+
+class Stack(BaseDraw):
+	'''Implemantation of a THStack'''
+	def __init__(self):
+		super(Stack, self).__init__()
+		self.stack=ROOT.THStack()
+		self.legendobj=self.stack
+		self.obj=self.stack
+
+	def Add(self, h):
+		''' Add a Histo to the stack'''
+		h.SetDrawOptions()
+		self.stack.Add(h.obj)
+		return self
+
+	def Draw(self):
+		''' Draw the Stack'''
+		self.stack.Draw("HIST SAME")
 		return self
 
 class Plotter:
@@ -375,9 +404,12 @@ class Plotter:
 				LoadObj(name,False)
 
 		elif self.cfg[name]["type"].lower() == "stack":
-			print "STACK TO DO"
+			obj=Stack()
+			for objName in self.cfg[name]["obj"].split(","):
+				LoadObj(name,False)
+				obj.Add( self.collection.Get(name) )
 
-		else:
+		else: ## th1/tgraph
 			f = ROOT.TFile.Open(self.cfg[name]["file"] )
 			self.fROOT.cd()
 			h = f.Get(self.cfg[name]["obj"]).Clone(name)
@@ -433,8 +465,9 @@ class Plotter:
 		if "position" not in self.cfg["text"] :  self.cfg["text"]["position"]="tl"
 
 		if self.cfg["text"]["position"].lower()[0] == "d":
-			if self.cfg["text"]["text"].lower() == "preliminary": mytext="#splitline{#bf{CMS}}{#scale[0.75]{#it{Preliminary}}}"
-			if self.cfg["text"]["text"].lower() == "unpublished": mytext="#splitline{#bf{CMS}}{#scale[0.75]{#it{Unpublished}}}"
+			latex.SetTextSize(0.03)
+			if self.cfg["text"]["text"].lower() == "preliminary": mytext="#splitline{#scale[1.4]{#bf{CMS}}}{#it{Preliminary}}"
+			if self.cfg["text"]["text"].lower() == "unpublished": mytext="#splitline{#scale[1.4]{#bf{CMS}}}{#it{Unpublished}}"
 			if self.cfg["text"]["position"].lower() == "dtl": self.cfg["text"]["position"] = "tl"
 			if self.cfg["text"]["position"].lower() == "dtr": self.cfg["text"]["position"] = "tr"
 			if self.cfg["text"]["position"].lower() == "dbl": self.cfg["text"]["position"] = "bl"
@@ -456,6 +489,11 @@ class Plotter:
 			latex.SetTextAlign(31)
 			x=1-self.canv.GetRightMargin()- 0.02
 			y=self.canv.GetBottomMargin() +0.02
+
+		if self.BoolKey("ratio","draw"):
+			#magic numbers
+			if self.cfg["text"]["position"][0] == 't': y-=0.02
+			if self.cfg["text"]["position"][0] == 'b': y+=0.02
 
 		latex.DrawLatex(x,y,mytext)
 
