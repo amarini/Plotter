@@ -150,15 +150,21 @@ class Graph(BaseDraw):
 			eyh=self.graph.GetEYhigh()[i]
 			if y> ymax and y-eyl < ymax:
 				n=self.graphRange.GetN()
-				self.graphRange.SetPoint(n,x,ymax)
+				self.graphRange.SetPoint(n,x,ymax - (ymax-ymin)*0.00001 )
 				self.graphRange.SetPointError(n,0,0, ymax-y+eyl, eyh+y-ymax)
 			if y< ymin and y+eyh > ymin:
 				n=self.graphRange.GetN()
-				self.graphRange.SetPoint(n,x,ymin)
+				self.graphRange.SetPoint(n,x,ymin + (ymax-ymin)*0.00001)
 				self.graphRange.SetPointError(n,0,0, ymin -y +eyl, eyh+y-ymin)
 		return self	
 
 	def Draw(self):
+		''' Draw a graph obj'''
+		# check references are ok
+		if self.graph == None:
+			self.graph=self.obj
+		# set for errors
+		#set style and draw
 		if self.style == self.styles["marker"]:
 			self.graph.SetMarkerStyle(self.styleopt)
 			self.graph.SetLineColor(self.color)
@@ -169,13 +175,14 @@ class Graph(BaseDraw):
 				opt="PE SAME"
 			self.graph.Draw(opt)
 			self.legendobj= self.graph
-			if self.graphRange != None:
+			if self.graphRange != None and self.drawerrors:
+				#print "DEBUG Draw ERRORS EXT RANGE"
 				self.graphRange.SetMarkerStyle(0)
 				self.graphRange.SetMarkerSize(0)
 				self.graphRange.SetLineColor(self.color)
 				self.graphRange.SetMarkerColor(self.color)
 				self.graphRange.SetLineWidth(self.width)
-				self.graphRange.Draw(opt)
+				self.graphRange.Draw("E SAME")
 
 		if self.style == self.styles["band"]:
 			self.graph.SetFillStyle(self.styleopt)
@@ -184,7 +191,7 @@ class Graph(BaseDraw):
 			self.graph.SetLineWidth(self.width)
 			self.graph.Draw("E2 SAME")
 			self.legendobj=self.graph
-			if self.graphRange != None:
+			if self.graphRange != None and self.drawerrors:
 				self.graphRange.SetMarkerStyle(0)
 				self.graphRange.SetMarkerSize(0)
 				self.graphRange.SetFillStyle(self.styleopt)
@@ -265,7 +272,12 @@ class Histo(BaseDraw):
 			if self.fillstyle>0:
 				self.hist.SetFillStyle(self.fillstyle)
 				self.hist.SetFillColor(self.fillcolor)
+			else:
+				self.hist.SetFillStyle(0)
+				self.hist.SetFillColor(0)
 			#print "Setting line style for Histo",self.hist.GetName(),"to",self.styleopt
+			if self.styleopt > 7 :
+				self.hist.SetLineStyle(1)
 			self.hist.SetLineStyle(self.styleopt)
 			self.legendobj=self.hist
 		return self
@@ -355,10 +367,22 @@ class Plotter:
 			##### Create obj
 			self.LoadObj( name )
 	def __del__(self):
-		if self.collection: del self.collection
-		if self.collectionratio:del self.collectionratio
+		try:
+			if self.collection: del self.collection
+			if self.collectionratio:del self.collectionratio
+		except : pass
 		self.fROOT.Close()
 		pass
+
+	def GetObjFromFile( self, fROOT, objName):
+		''' Get Object from a file '''
+		if ':' in objName:
+			base=fROOT.Get(objName.split(':')[0])
+			obj =base.FindObject(objName.split(':')[1] )
+		else:
+			obj = fROOT.Get(objName)
+		return obj
+
 	def LoadObj(self, name, draw=True):
 		'''Load Object '''
 		#already loaded -- set it drawable if called with draw
@@ -388,7 +412,8 @@ class Plotter:
 				else: 
 					f = ROOT.TFile.Open(self.cfg[name]["file"] )
 				self.fROOT.cd()
-				o=f.Get(objName).Clone()
+				#o=f.Get(objName).Clone()
+				o=self.GetObjFromFile(f,objName).Clone()
 				f.Close()
 				f=None
 				if index == 0 : 
@@ -426,7 +451,11 @@ class Plotter:
 		else: ## th1/tgraph
 			f = ROOT.TFile.Open(self.cfg[name]["file"] )
 			self.fROOT.cd()
-			h = f.Get(self.cfg[name]["obj"]).Clone(name)
+			#h = f.Get(self.cfg[name]["obj"]).Clone(name)
+			h = self.GetObjFromFile(f,self.cfg[name]["obj"]).Clone(name)
+			if h == None:
+				print "Error: histo",self.cfg[name]["obj"],"not found"
+				raise NameError
 
 		#TODO -> TH2D
 		if self.cfg[name]["type"].lower() ==  "th1d" or self.cfg[name]["type"].lower() == "th1":
@@ -438,11 +467,15 @@ class Plotter:
 		if self.cfg[name]["type"].lower() == "tgraph":
 			obj=Graph()
 			obj.obj = h
+			obj.graph = obj.obj
+			if self.verbose>1: print "Graph Object",name,"at",obj.graph
 			
 		if self.BoolKey(name,"xerror") or self.BoolKey(name,"yerror"):
 			obj.drawerrors=True
+
 		if self.BoolKey(name,"xerror"): 
 			obj.xerror=True
+
 		if self.BoolKey(name,"yerror"):
 			obj.yerror=True
 
@@ -536,6 +569,9 @@ class Plotter:
 		if "logo" not in self.cfg: return self
 		if "draw" not in self.cfg["logo"]: return self
 		if not self.BoolKey("logo","draw") : return self
+		
+		if self.verbose>0: print "Adding logo"
+
 		if "file" not in self.cfg["logo"]: 
 			print >>sys.stderr, "You need to specify a file for the logo"
 			raise NameError
@@ -596,6 +632,7 @@ class Plotter:
 			return -1
 		colortext=self.cfg[section][field]
 		if "ROOT" in colortext:
+			if self.verbose>1: print "color will be set to color=",colortext
 			exec("color="+colortext)
 		elif "RGB" in colortext:
 			r=float( colortext.split(',')[1])
@@ -663,13 +700,15 @@ class Plotter:
 				if self.BoolKey(name,"yerror"):
 					mytype += "E"
 
-			if self.cfg[name]["style"].lower() == "line": 
+			elif self.cfg[name]["style"].lower() == "line": 
 				mytype = "L"
 				if self.collection.Get(name).fillstyle >0 and self.collection.Get(name).fillcolor >0:
 					mytype = "F"
 
-			if self.cfg[name]["style"].lower() == "band": 
+			elif self.cfg[name]["style"].lower() == "band": 
 				mytype = "F"
+			else: 
+				print "Warning: unknown type:",self.cfg[name]["style"]
 			#if self.verbose>0:
 			#print "DEBUG Entry:", self.collection.Get(name).legendobj.GetName(),"label=",mylabel,"opts",mytype
 			e=l.AddEntry(self.collection.Get(name).legendobj, mylabel, mytype)
@@ -689,6 +728,10 @@ class Plotter:
 			#if self.verbose>0: print "darwing object:", self.collection.GetName(x)
 			if self.verbose>0: print "darwing object:", xName
 			x=self.collection.Get(xName)
+			if isinstance(x,Graph):
+				ymin = self.pad1.GetUymin()
+				ymax = self.pad1.GetUymax()
+				x.Range(ymin,ymax) 
 			if x.draw: x.Draw()
 		return self
 
@@ -800,18 +843,34 @@ class Plotter:
 				t = Graph()
 				t.Empty(o.obj.GetName() + "_ratio")
 				for i in range(0,o.obj.GetN()):
-					x = t.graph.GetX()[i]
-					y = t.graph.GetY()[i]
-					exl = t.graph.GetEXlow()[i]
-					exh = t.graph.GetEXhigh()[i]
-					eyl = t.graph.GetEYlow()[i]
-					eyh = t.graph.GetEYhigh()[i]
-					if ( x< self.ratiobase.GetBinLowEdge(i) or x > self.ratiobase.GetBinLowEdge(i+1) ):
+					x = o.graph.GetX()[i]
+					y = o.graph.GetY()[i]
+
+					if o.graph.InheritsFrom("TGraphAsymmErrors"):
+						exl = o.graph.GetEXlow()[i]
+						exh = o.graph.GetEXhigh()[i]
+						eyl = o.graph.GetEYlow()[i]
+						eyh = o.graph.GetEYhigh()[i]
+					else:
+						exl=0 ##TODO TGraphErrors
+						exh=0
+						eyl=0
+						eyh=0
+					
+					#th1 offset by one
+					if ( x< self.ratiobase.GetBinLowEdge(i+1) or x > self.ratiobase.GetBinLowEdge(i+2) ):
 							print >>sys.stderr, "Warning: Possible mistake in bin range conversion from histo to graph"
-					val = self.ratiobase.GetBinContent(i)
-					y /=  val
-					eyl /= val
-					eyh /= val
+					val = self.ratiobase.GetBinContent(i+1)
+					if self.verbose>2:
+						print "ratio for bin",i,"base val = ",val
+					if val !=0:
+						y /=  val
+						eyl /= val
+						eyh /= val
+					else:
+						y=0
+						eyl=0
+						eyh=0
 					t.AddPointAsymmErrors( x, y, exl, exh, eyl, eyh)
 				t.CopyStyle(o)
 				self.collectionratio.Add(name,t)
@@ -878,6 +937,8 @@ class Plotter:
 		#for x in self.collectionratio:
 		for xName in nameList: #preserve order!
 			x=self.collectionratio.Get(xName)
+			if isinstance(x,Graph):
+				x.Range(ymin,ymax)
 			if x.draw: x.Draw()
 
 		#redraw axis
