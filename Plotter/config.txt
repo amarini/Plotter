@@ -97,7 +97,7 @@ lumi = 19.7~fb^{-1}~(8TeV)
 [legend]
 draw =  True
 header = myHead
-legendList = name1,name2
+legendList = name1:name3,name2   ## if name1 == band and name3 == line, join them, will use the first for the label
 position = .7,.7,.8,.8
 
 [name]
