@@ -685,7 +685,8 @@ class Plotter:
 			l.SetTextSize(self.entrysize)
 		if "legendlist" not in self.cfg["legend"]: self.cfg["legend"]["legendlist"]=""
 
-		for name in self.cfg["legend"]["legendlist"].split(','):
+		for name in self.cfg["legend"]["legendlist"].split('#')[0].split(','):
+			name = name.split()[0]
 			if name =='' : continue
 			if self.verbose >0 : print "-> adding '"+name+"' to the legend"
 			if "label" in self.cfg[name] : mylabel=self.cfg[name]["label"]
@@ -814,7 +815,7 @@ class Plotter:
 		return self
 
 	def MakeRatio(self):
-		ratioBaseName=self.cfg["ratio"]["base"]
+		ratioBaseName=self.cfg["ratio"]["base"].split('#')[0].split()[0]
 		if ratioBaseName not in self.cfg: 
 			print >>sys.stderr,"Ratio Base name referred to a non configured histo",ratioBaseName
 			raise NameError
