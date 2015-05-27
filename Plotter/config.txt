@@ -75,6 +75,11 @@
 ##              fillcolor=0
 ##  color = ROOT.kRed / RGB,0.7,0.8,.9 / 21
 ##  label = legend label
+#
+### 
+### [include]
+### file= filename
+### sub= output.root:output_2.root,pdf:png
 
 [base]
 type = 1D

@@ -1,5 +1,6 @@
 ## configuration
 from optparse import OptionParser, OptionGroup
+import re
 usage=''' 
 	%prog
 	use to plot TH1D, TGraph, TH2D ...
@@ -21,11 +22,42 @@ _cfg = RawConfigParser()
 _cfg.read(opts.dat)
 cfg = {}
 for sect in _cfg.sections():
-	if opts.verbose: print "SECTION", sect
 	cfg[sect] = {}
 	for (name, value) in _cfg.items(sect):
-		if opts.verbose: print "* ",name," = ",value
-		cfg[sect][name] = value
+		cfg[sect][name] = value.split('#')[0].split()[0]
+del _cfg
+
+while "include" in cfg:
+	sub = []
+	file = cfg["include"]["file"]
+	if "sub" in cfg["include"]: 
+	   for s in cfg["include"]["sub"].split(','):
+		   sub.append( (s.split(':')[0],s.split(':')[1]  )  )
+		
+	_cfg = RawConfigParser()
+	_cfg.read( cfg["include"]["file"] )
+	# remove include key from dictionary
+	del cfg["include"]
+	# add info to the cfg
+	for sect in _cfg.sections():
+		if sect not in cfg: cfg[sect]= {}
+		for (name,value) in _cfg.items(sect):
+			#never overwrite
+			if name not in cfg[sect]:
+				for a,b in sub:
+					value = re.sub(a,b,value)
+				cfg[sect][name] = value.split('#')[0].split()[0]
+	del _cfg	
+#PRINT CFG
+if opts.verbose:
+	print "====================== CFG ===================="
+	for sec in cfg:
+		print "["+sec+"]"
+		for name in cfg[sec]:
+			print name + " = "+ cfg[sec][name]
+		print
+	print "==============================================="
+
 
 if opts.verbose:
 	if "verbose" in cfg["base"]: 

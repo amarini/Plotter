@@ -10,8 +10,9 @@ from subprocess import *
 
 
 # remove argv, otherwise if -b change ROOT Behaviour
-sys.argv=[]
+sys.argv=["-b"]
 import ROOT
+ROOT.gROOT.SetBatch()
 
 class BaseDraw(object): # object "newclass type", make super and co behave differently. This are type and objects
 	''' Base Class for Objects that can be drawn'''
@@ -827,7 +828,19 @@ class Plotter:
 		if isinstance(self.collection.Get(ratioBaseName),Histo):
 			self.ratiobase=self.collection.Get(ratioBaseName).obj.Clone(ratioBaseName + "_ratiobase")
 		elif isinstance(self.collection.Get(ratioBaseName),Stack): ##THSTack
-			self.ratiobase=self.collection.Get(ratioBaseName).obj.GetHistogram().Clone(ratioBaseName + "_ratiobase")
+			#self.ratiobase=self.collection.Get(ratioBaseName).obj.GetHistogram().Clone(ratioBaseName + "_ratiobase")
+			o=self.collection.Get(ratioBaseName)
+			for idx,h in enumerate(o.hists): 
+				if idx == 0:
+					self.ratiobase = h.obj.Clone(ratioBaseName + "_ratiobase")
+				else:
+					self.ratiobase.Add(h.obj)
+
+		if self.verbose>2: 
+			print "---- Ratio Base ----" 
+			self.ratiobase.Print("All")
+			print "---------------------" 
+
 		## reset errors
 		## ASSUMPTION: base is a TH1
 		for i in range(1,self.ratiobase.GetNbinsX()+1): self.ratiobase.SetBinError(i,0)
@@ -839,7 +852,7 @@ class Plotter:
 			
 			#if it is specified the list used it
 			if "drawlist" in self.cfg["ratio"] and not name in self.cfg["ratio"]["drawlist"].split(","): continue
-			
+
 			if isinstance(o,Graph):
 				t = Graph()
 				t.Empty(o.obj.GetName() + "_ratio")
@@ -875,6 +888,11 @@ class Plotter:
 					t.AddPointAsymmErrors( x, y, exl, exh, eyl, eyh)
 				t.CopyStyle(o)
 				self.collectionratio.Add(name,t)
+				if self.verbose>2: 
+					print "---- Ratio Graph ----" 
+					t.obj.Print("All")
+					print "---------------------" 
+			
 			elif isinstance(o,Histo):
 				t = Histo()
 				t.obj = o.obj.Clone(o.obj.GetName() + "_ratio")
@@ -882,6 +900,10 @@ class Plotter:
 				t.obj.Divide(self.ratiobase)
 				t.CopyStyle(o)
 				self.collectionratio.Add(name,t)
+				if self.verbose>2: 
+					print "---- Ratio Histo ----" 
+					t.obj.Print("All")
+					print "---------------------" 
 
 			elif isinstance(o,Stack):	
 				self.fROOT.cd() ##???
@@ -900,6 +922,11 @@ class Plotter:
 				#	t.obj.Add( h2 )
 
 				self.collectionratio.Add(name,t)
+
+				if self.verbose>2: 
+					print "---- Ratio Stack ----" 
+					t.obj.Print("All")
+					print "---------------------" 
 
 			else: 
 				print >>sys.stderr,"class not implemented in ratio"
@@ -940,7 +967,9 @@ class Plotter:
 			x=self.collectionratio.Get(xName)
 			if isinstance(x,Graph):
 				x.Range(ymin,ymax)
-			if x.draw: x.Draw()
+			if x.draw: 
+				if self.verbose>0:print "Drawing ratio for histo",xName
+				x.Draw()
 
 		#redraw axis
 		self.ratioaxisHist.Draw("AXIS X+Y+ SAME")
