@@ -61,6 +61,7 @@
 ## [name]
 ## type = TH1D, TH2D, TGraph, envelope, stack (TOCHECK), sqrsum (TOCHECK)
 ##                TH1 works with TH1D, envelope of TH1
+## norm = True/False only TH1
 ## file = prova.root               | file = prova.root[,prova2.root,]  | not for stack,sqrsum
 ## obj  = prova /Canvas:prova      | obj  = a,b,c 
 ##         for stack and sqrsum, use name of the corresponding histogram description

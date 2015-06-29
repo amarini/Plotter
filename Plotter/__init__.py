@@ -457,6 +457,8 @@ class Plotter:
 			if h == None:
 				print "Error: histo",self.cfg[name]["obj"],"not found"
 				raise NameError
+			if self.BoolKey(name,"norm"):
+				h.Scale( 1./h.Integral() )
 
 		#TODO -> TH2D
 		if self.cfg[name]["type"].lower() ==  "th1d" or self.cfg[name]["type"].lower() == "th1":
