@@ -23,6 +23,7 @@ class BaseDraw(object): # object "newclass type", make super and co behave diffe
 		self.styleopt = 21
 		self.color = ROOT.kBlack
 		self.width = 1
+		self.size = 1
 		self.obj = None
 		self.drawerrors=False
 		self.legendobj=None
@@ -58,6 +59,7 @@ class BaseDraw(object): # object "newclass type", make super and co behave diffe
 		self.style = other.style
 		self.styleopt= other.styleopt
 		self.color= other.color
+		self.size= other.size
 		self.width = other.width
 		self.drawerrors= other.drawerrors
 		return self
@@ -170,6 +172,7 @@ class Graph(BaseDraw):
 			self.graph.SetMarkerStyle(self.styleopt)
 			self.graph.SetLineColor(self.color)
 			self.graph.SetMarkerColor(self.color)
+			self.graph.SetMarkerSize(self.size)
 			self.graph.SetLineWidth(self.width)
 			opt="P SAME"
 			if self.drawerrors:
@@ -182,6 +185,7 @@ class Graph(BaseDraw):
 				self.graphRange.SetMarkerSize(0)
 				self.graphRange.SetLineColor(self.color)
 				self.graphRange.SetMarkerColor(self.color)
+				self.graphRange.SetMarkerSize(self.size)
 				self.graphRange.SetLineWidth(self.width)
 				self.graphRange.Draw("E SAME")
 
@@ -486,6 +490,9 @@ class Plotter:
 		# 
 		color = self.ColorKey(name,"color")
 		if color>=0: obj.color=color
+
+		size = self.FloatKey(name,"size")
+		if size>=0: obj.size=size
 		#
 		styleopt = self.ColorKey(name,"styleopt")
 		if styleopt >=0 : obj.styleopt=styleopt
@@ -657,6 +664,14 @@ class Plotter:
 			print >> sys.stderr, "cfg field",field, "in section",section,"does not exist"
 			raise TypeError
 		return int(self.cfg[section][field])
+
+	def FloatKey(self, section, field):
+		''' Return -1 in case section field is not specified '''
+		if section not in self.cfg:
+			return -1
+		if field not in self.cfg[section]:
+			return -1
+		return float(self.cfg[section][field])
 
 	def DrawLegend(self):
 		''' Draw legend'''
