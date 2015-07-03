@@ -3,7 +3,7 @@
 ########################
 ## [base]
 ## type = 1D, 2D
-## text = CMS, Preliminary, Unpublished
+## text = CMS, Preliminary, Unpublished, Simulation
 ## yrange = 0,1
 ## canv = 800,800
 ## yLog = False, True

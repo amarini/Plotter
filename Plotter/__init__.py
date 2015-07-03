@@ -457,10 +457,11 @@ class Plotter:
 			f = ROOT.TFile.Open(self.cfg[name]["file"] )
 			self.fROOT.cd()
 			#h = f.Get(self.cfg[name]["obj"]).Clone(name)
-			h = self.GetObjFromFile(f,self.cfg[name]["obj"]).Clone(name)
-			if h == None:
+			h_tmp = self.GetObjFromFile(f,self.cfg[name]["obj"])
+			if h_tmp == None:
 				print "Error: histo",self.cfg[name]["obj"],"not found"
 				raise NameError
+			h = h_tmp.Clone(name)
 			if self.BoolKey(name,"norm"):
 				h.Scale( 1./h.Integral() )
 
@@ -519,12 +520,14 @@ class Plotter:
 		if self.cfg["text"]["text"].lower() == "cms": mytext="#bf{CMS}"
 		if self.cfg["text"]["text"].lower() == "preliminary" : mytext="#bf{CMS},#scale[0.75]{ #it{Preliminary}}"
 		if self.cfg["text"]["text"].lower() == "unpublished" : mytext="#bf{CMS},#scale[0.75]{ #it{Unpublished}}"
+		if self.cfg["text"]["text"].lower() == "simulation" : mytext="#bf{CMS},#scale[0.75]{ #it{Simulation}}"
 		if "position" not in self.cfg["text"] :  self.cfg["text"]["position"]="tl"
 
 		if self.cfg["text"]["position"].lower()[0] == "d":
 			latex.SetTextSize(0.03)
 			if self.cfg["text"]["text"].lower() == "preliminary": mytext="#splitline{#scale[1.4]{#bf{CMS}}}{#it{Preliminary}}"
 			if self.cfg["text"]["text"].lower() == "unpublished": mytext="#splitline{#scale[1.4]{#bf{CMS}}}{#it{Unpublished}}"
+			if self.cfg["text"]["text"].lower() == "simulation": mytext="#splitline{#scale[1.4]{#bf{CMS}}}{#it{Simulation}}"
 			if self.cfg["text"]["position"].lower() == "dtl": self.cfg["text"]["position"] = "tl"
 			if self.cfg["text"]["position"].lower() == "dtr": self.cfg["text"]["position"] = "tr"
 			if self.cfg["text"]["position"].lower() == "dbl": self.cfg["text"]["position"] = "bl"
