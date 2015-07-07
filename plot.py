@@ -24,7 +24,8 @@ cfg = {}
 for sect in _cfg.sections():
 	cfg[sect] = {}
 	for (name, value) in _cfg.items(sect):
-		cfg[sect][name] = value.split('#')[0].split()[0]
+		if value == '' : cfg[sect][name]=''
+		else: cfg[sect][name] = value.split('#')[0].split()[0]
 del _cfg
 
 while "include" in cfg:

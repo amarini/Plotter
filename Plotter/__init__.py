@@ -799,6 +799,14 @@ class Plotter:
 
 
 		axisHist= ROOT.TH2D("axis","axis",100,xmin,xmax,100,ymin,ymax)
+
+		if "binlabels" in self.cfg["base"] and self.cfg["base"]["binlabels"] !="":
+			nbins=int(self.cfg["base"]["binlabels"].split(":")[0])
+			labels=self.cfg["base"]["binlabels"].split(":")[1].split(',')
+			axisHist= ROOT.TH2D("axis","axis",nbins,xmin,xmax,100,ymin,ymax)
+			for idx,l in enumerate(labels):
+				axisHist.GetXaxis().SetBinLabel(idx+1,self.ParseStr(l))
+			
 		axisHist.GetYaxis().SetRangeUser(ymin,ymax)
 		axisHist.GetXaxis().SetRangeUser(xmin,xmax)
 
@@ -1000,6 +1008,8 @@ class Plotter:
 		return self
 
 	def Draw(self):
+		if self.BoolKey("base","interactive"):
+			ROOT.gROOT.SetBatch(0)
 		self.Style().DrawCanvas().DrawObjects().DrawLegend().DrawCMS().DrawLogo().RedrawAxis()
 		if self.BoolKey("ratio","draw"):
 			self.MakeRatio().DrawRatio()
@@ -1008,6 +1018,10 @@ class Plotter:
 	def Save(self):
 		self.canv.Modified()
 		self.canv.Update()
+
+		if self.BoolKey("base","interactive"):
+			raw_input("Looks ok?")
+
 		for ext in self.cfg["base"]["format"].split(','):
 			if ext =="root":
 				self.fROOT.cd()
