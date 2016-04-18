@@ -3,7 +3,7 @@
 ########################
 ## [base]
 ## type = 1D, 2D
-## text = CMS, Preliminary, Unpublished, Simulation
+## text = CMS, Preliminary, Unpublished, Simulation, Internal
 ## yrange = 0,1
 ## canv = 800,800
 ## yLog = False, True
@@ -61,14 +61,16 @@
 #########################
 ##
 ## [name]
-## type = TH1D, TH2D, TGraph, envelope, stack (TOCHECK), sqrsum (TOCHECK)
+## type = TH1D, TH2D, TGraph, envelope, stack (TOCHECK), sqrsum (TOCHECK), add
 ##                TH1 works with TH1D, envelope of TH1
 ## norm = True/False only TH1
 ## file = prova.root               | file = prova.root[,prova2.root,]  | not for stack,sqrsum
 ## obj  = prova /Canvas:prova      | obj  = a,b,c 
 ##         for stack and sqrsum, use name of the corresponding histogram description
+## 	for add, you can specify only one file or all the correspondance (comma separated)
 ## style = marker, line, band 
 ## styleopt= 21
+## width= 2
 ##  -> marker   shift=xxx
 ##              yerror=True
 ##              xerror=False

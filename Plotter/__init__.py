@@ -453,6 +453,33 @@ class Plotter:
 				self.LoadObj(objName,False)
 				obj.Add( self.collection.Get(objName) )
 
+		elif self.cfg[name]["type"].lower() == "add":
+			h=None
+			for idx,oname in enumerate(self.cfg[name]["obj"].split(',')):
+				if len(self.cfg[name]["file"].split(',')) >1: 
+					fname=self.cfg[name]["file"].split(',')[idx]
+				else: fname=self.cfg[name]["file"]
+
+				f = ROOT.TFile.Open(fname )
+				self.garbage.append(f)
+
+				h_tmp=self.GetObjFromFile(f,oname)
+
+				if h_tmp == None: 
+					print "Error: histo",oname,"not found in file",fname
+
+				if idx==0: 
+					h=h_tmp.Clone(name)
+					self.garbage.append(h)
+					#h = self.garbage[-1]
+				else:
+					if h==None: print"Error: h become None --> ",h,"--",self.garbage[-1]
+					h.Add(h_tmp)
+				#f.Close()
+
+			if self.BoolKey(name,"norm"):
+				h.Scale( 1./h.Integral() )
+
 		else: ## th1/tgraph
 			f = ROOT.TFile.Open(self.cfg[name]["file"] )
 			self.fROOT.cd()
@@ -466,8 +493,13 @@ class Plotter:
 				h.Scale( 1./h.Integral() )
 
 		#TODO -> TH2D
-		if self.cfg[name]["type"].lower() ==  "th1d" or self.cfg[name]["type"].lower() == "th1":
+		if self.cfg[name]["type"].lower() ==  "th1d" or \
+				self.cfg[name]["type"].lower() == "th1" or \
+				self.cfg[name]["type"]=="add":
 			obj=Histo()
+			if 'scale' in self.cfg[name]:
+				scale=self.FloatKey(name,"scale")
+				if scale>0: h.Scale(scale )
 			obj.obj = h
 			obj.fillstyle=self.ColorKey(name,"fillstyle")
 			obj.fillcolor=self.ColorKey(name,"fillcolor")
@@ -521,6 +553,7 @@ class Plotter:
 		if self.cfg["text"]["text"].lower() == "preliminary" : mytext="#bf{CMS},#scale[0.75]{ #it{Preliminary}}"
 		if self.cfg["text"]["text"].lower() == "unpublished" : mytext="#bf{CMS},#scale[0.75]{ #it{Unpublished}}"
 		if self.cfg["text"]["text"].lower() == "simulation" : mytext="#bf{CMS},#scale[0.75]{ #it{Simulation}}"
+		if self.cfg["text"]["text"].lower() == "internal" : mytext="#bf{CMS},#scale[0.75]{ #it{Internal}}"
 		if "position" not in self.cfg["text"] :  self.cfg["text"]["position"]="tl"
 
 		if self.cfg["text"]["position"].lower()[0] == "d":
@@ -652,7 +685,7 @@ class Plotter:
 			g=float( colortext.split(',')[2])
 			b=float( colortext.split(',')[3])
 			c=ROOT.TColor(self.newcolorindex,r,g,b)
-			self.colors.append(c) ## garbage collector
+			self.newcolors.append(c) ## garbage collector
 			color=self.newcolorindex
 			self.newcolorindex+=1
 		else:
