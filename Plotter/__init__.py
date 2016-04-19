@@ -480,6 +480,17 @@ class Plotter:
 			if self.BoolKey(name,"norm"):
 				h.Scale( 1./h.Integral() )
 
+		elif self.cfg[name]["type"].lower()=="line" or \
+		     self.cfg[name]["type"].lower()=="box":
+			h = ROOT.TGraph()
+			for pointStr in self.cfg[name]['points'].split(';'):
+				x=self.FloatKey( pointStr.split(',')[0]
+				y=self.FloatKey( pointStr.split(',')[1]
+				h.SetPoint(h.GetN(),x,y)
+			## check on style
+			if self.cfg[name]['type'].lower() == "line" and self.cfg[name]['style'] !="line": print "Warning Line",name,"is not set to 'line' option in style"
+			if self.cfg[name]['type'].lower() == "box" and self.cfg[name]['style'] !="band": print "Warning Box",name,"is not set to 'band' option in style"
+
 		else: ## th1/tgraph
 			f = ROOT.TFile.Open(self.cfg[name]["file"] )
 			self.fROOT.cd()
@@ -687,7 +698,11 @@ class Plotter:
 			r=float( colortext.split(',')[1])
 			g=float( colortext.split(',')[2])
 			b=float( colortext.split(',')[3])
-			c=ROOT.TColor(self.newcolorindex,r,g,b)
+			if len(colortext.split(','))> 4: 
+				a=float( colortext.split(',')[4])
+				c=ROOT.TColor(self.newcolorindex,r,g,b,a)
+			else:
+				c=ROOT.TColor(self.newcolorindex,r,g,b)
 			self.newcolors.append(c) ## garbage collector
 			color=self.newcolorindex
 			self.newcolorindex+=1

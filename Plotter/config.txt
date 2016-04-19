@@ -61,7 +61,7 @@
 #########################
 ##
 ## [name]
-## type = TH1D, TH2D, TGraph, envelope, stack (TOCHECK), sqrsum (TOCHECK), add
+## type = TH1D, TH2D, TGraph, envelope, stack (TOCHECK), sqrsum (TOCHECK), add, line, box
 ##                TH1 works with TH1D, envelope of TH1
 ## norm = True/False only TH1
 ## file = prova.root               | file = prova.root[,prova2.root,]  | not for stack,sqrsum
@@ -82,6 +82,7 @@
 ##  label = legend label
 ##  scale= (TH1,add)
 ##  rebin= (TH1,add)
+##  points= x,y;x2,y2 ... (must, line, box)
 ### 
 ### [include]
 ### file= filename
