@@ -500,6 +500,9 @@ class Plotter:
 			if 'scale' in self.cfg[name]:
 				scale=self.FloatKey(name,"scale")
 				if scale>0: h.Scale(scale )
+			if 'rebin' in self.cfg[name]:
+				r = self.NumKey(name,'rebin')
+				if r>0: h.Rebin(r)
 			obj.obj = h
 			obj.fillstyle=self.ColorKey(name,"fillstyle")
 			obj.fillcolor=self.ColorKey(name,"fillcolor")

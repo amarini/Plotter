@@ -34,7 +34,8 @@ while "include" in cfg:
 	if "sub" in cfg["include"]: 
 	   for s in cfg["include"]["sub"].split(','):
 		   sub.append( (s.split(':')[0],s.split(':')[1]  )  )
-		
+
+	print "-> Reading file",cfg["include"]["file"]
 	_cfg = RawConfigParser()
 	_cfg.read( cfg["include"]["file"] )
 	# remove include key from dictionary
@@ -47,6 +48,7 @@ while "include" in cfg:
 			if name not in cfg[sect]:
 				for a,b in sub:
 					value = re.sub(a,b,value)
+				#print "section",sect,"name",name,"value=",value
 				cfg[sect][name] = value.split('#')[0].split()[0]
 	del _cfg	
 #PRINT CFG

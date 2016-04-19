@@ -80,7 +80,8 @@
 ##              fillcolor=0
 ##  color = ROOT.kRed / RGB,0.7,0.8,.9 / 21
 ##  label = legend label
-#
+##  scale= (TH1,add)
+##  rebin= (TH1,add)
 ### 
 ### [include]
 ### file= filename
