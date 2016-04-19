@@ -484,8 +484,8 @@ class Plotter:
 		     self.cfg[name]["type"].lower()=="box":
 			h = ROOT.TGraph()
 			for pointStr in self.cfg[name]['points'].split(';'):
-				x=self.FloatKey( pointStr.split(',')[0]
-				y=self.FloatKey( pointStr.split(',')[1]
+				x=self.FloatKey( pointStr.split(',')[0] )
+				y=self.FloatKey( pointStr.split(',')[1] )
 				h.SetPoint(h.GetN(),x,y)
 			## check on style
 			if self.cfg[name]['type'].lower() == "line" and self.cfg[name]['style'] !="line": print "Warning Line",name,"is not set to 'line' option in style"
