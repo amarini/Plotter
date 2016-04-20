@@ -529,19 +529,24 @@ class Plotter:
 			if self.BoolKey(name,"norm"):
 				h.Scale( 1./h.Integral() )
 
-			## blind option for tgraph and th1
+
 			if "blind" in self.cfg[name] and len(self.cfg[name]['blind'].split(','))>=2 and self.cfg[name]['type'].lower().startswith('th1'):
-				xmin = self.cfg[name]['blind'].split(',')[0]
-				xmax = self.cfg[name]['blind'].split(',')[1]
+				xmin = float(self.cfg[name]['blind'].split(',')[0])
+				xmax = float(self.cfg[name]['blind'].split(',')[1])
 				for i in range(0,h.GetNbinsX()+1):
 					x=h.GetBinCenter(i+1)
-					if xmin<=x and x<xmax: h.SetBinContent(i+1,0)
+					if xmin<=x and x<xmax: 
+						h.SetBinContent(i+1,0)
+						h.SetBinError(i+1,0)
 			if "blind" in self.cfg[name] and len(self.cfg[name]['blind'].split(','))>=2 and self.cfg[name]['type'].lower().startswith('tgraph'):
-				xmin = self.cfg[name]['blind'].split(',')[0]
-				xmax = self.cfg[name]['blind'].split(',')[1]
+				xmin = float(self.cfg[name]['blind'].split(',')[0])
+				xmax = float(self.cfg[name]['blind'].split(',')[1])
 				for i in range(0,h.GetN()+1):
 					x=h.GetX()[i]
-					if xmin<=x and x<xmax: h.GetY()[i]=0
+					if xmin<=x and x<xmax: 
+						h.GetY()[i]=0
+						h.GetEYlow()[i]=0
+						h.GetEYhigh()[i]=0
 
 		#TODO -> TH2D
 		if self.cfg[name]["type"].lower() ==  "th1d" or \
@@ -792,9 +797,11 @@ class Plotter:
 		l.SetBorderSize(0)
 		if "header" in self.cfg["legend"]:
 			mytext= self.ParseStr(self.cfg["legend"]["header"])
-			e=l.SetHeader(mytext)
+			#e=l.SetHeader(mytext)
+			e=l.AddEntry(None,mytext,"H")
 			l.SetTextFont(43)
 			l.SetTextSize(self.entrysize)
+
 		if "legendlist" not in self.cfg["legend"]: self.cfg["legend"]["legendlist"]=""
 
 		for name in self.cfg["legend"]["legendlist"].split('#')[0].split(','):
