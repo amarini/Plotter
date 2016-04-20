@@ -18,6 +18,9 @@
 ## interactive = True/False
 ## binlabels = 10:A,B,C,D
 
+## [substitute]
+## prova = abc ## use elsewhere %(prova)s
+
 #########################
 ## Ratio Configuration ##
 #########################
@@ -83,6 +86,7 @@
 ##  scale= (TH1,add)
 ##  rebin= (TH1,add)
 ##  points= x,y;x2,y2 ... (must, line, box)
+##  blind = x1,y1 (th1/th1d/tgraph)
 ### 
 ### [include]
 ### file= filename

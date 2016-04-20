@@ -51,6 +51,19 @@ while "include" in cfg:
 				#print "section",sect,"name",name,"value=",value
 				cfg[sect][name] = value.split('#')[0].split()[0]
 	del _cfg	
+
+#### STANDARD SET OF substitutions
+if 'substitute' in cfg:
+	subdic={}
+	for key in cfg['substitute']:
+		subdic[key]=cfg['substitute'][key]
+	del cfg["substitute"]
+	## loop over the cfg and apply sub
+	for sect in cfg:
+		for name in cfg[sect]:
+			value=cfg[sect][name]%subdict
+			cfg[sect][name]=value
+
 #PRINT CFG
 if opts.verbose:
 	print "====================== CFG ===================="

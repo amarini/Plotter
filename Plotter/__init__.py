@@ -529,6 +529,20 @@ class Plotter:
 			if self.BoolKey(name,"norm"):
 				h.Scale( 1./h.Integral() )
 
+			## blind option for tgraph and th1
+			if "blind" in self.cfg[name] and len(self.cfg[name]['blind'].split(','))>=2 and self.cfg[name]['type'].lower().startswith('th1'):
+				xmin = self.cfg[name]['blind'].split(',')[0]
+				xmax = self.cfg[name]['blind'].split(',')[1]
+				for i in range(0,h.GetNbinsX()+1):
+					x=h.GetBinCenter(i+1)
+					if xmin<=x and x<xmax: h.SetBinContent(i+1,0)
+			if "blind" in self.cfg[name] and len(self.cfg[name]['blind'].split(','))>=2 and self.cfg[name]['type'].lower().startswith('tgraph'):
+				xmin = self.cfg[name]['blind'].split(',')[0]
+				xmax = self.cfg[name]['blind'].split(',')[1]
+				for i in range(0,h.GetN()+1):
+					x=h.GetX()[i]
+					if xmin<=x and x<xmax: h.GetY()[i]=0
+
 		#TODO -> TH2D
 		if self.cfg[name]["type"].lower() ==  "th1d" or \
 				self.cfg[name]["type"].lower() == "th1" or \
