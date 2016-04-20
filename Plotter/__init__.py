@@ -18,7 +18,7 @@ class BaseDraw(object): # object "newclass type", make super and co behave diffe
 	''' Base Class for Objects that can be drawn'''
 	def __init__(self):
 		self.types={"TH1D":1,"TGraph":2,"TH2D":3}
-		self.styles={"line":1,"marker":2,"band":4}
+		self.styles={"line":1,"marker":2,"band":4,"fill":5}
 		self.style = self.styles["line"]
 		self.styleopt = 21
 		self.color = ROOT.kBlack
@@ -48,10 +48,15 @@ class BaseDraw(object): # object "newclass type", make super and co behave diffe
 		self.style=self.styles["band"]
 		return self
 
+	def SetFill(self):
+		self.style=self.styles["fill"]
+		return self
+
 	def SetStyle(self, string):
 		if string.lower()=="band": self.SetBand()
 		if string.lower()=="line": self.SetLine()
 		if string.lower()=="marker": self.SetMarker()
+		if string.lower()=="fill": self.SetFill()
 		return self
 
 	def CopyStyle(self, other ):
@@ -204,6 +209,24 @@ class Graph(BaseDraw):
 				self.graphRange.SetFillColor(self.color)
 				self.graphRange.SetLineWidth(self.width)
 				self.graphRange.Draw("E2 SAME")
+
+		if self.style == self.styles["fill"]:
+			self.graph.SetFillStyle(self.styleopt)
+			self.graph.SetLineColor(self.color)
+			self.graph.SetFillColor(self.color)
+			self.graph.SetLineWidth(self.width)
+			self.graph.Draw("F SAME")
+			self.legendobj=self.graph
+
+		if self.style == self.styles["line"]:
+			self.graph.SetMarkerStyle(0)
+			self.graph.SetMarkerSize(0)
+			self.graph.SetLineStyle(self.styleopt)
+			self.graph.SetLineColor(self.color)
+			self.graph.SetFillColor(0)
+			self.graph.SetLineWidth(self.width)
+			self.graph.Draw("L SAME")
+			self.legendobj=self.graph
 
 		return self
 
@@ -398,11 +421,12 @@ class Plotter:
 		if self.verbose:
 			print "--- Loading Histo "+name+" ---"
 
-		if "file" not in self.cfg[name] and self.cfg[name]["type"] != "sqrsum" and self.cfg[name]["type"] != "stack": 
+		if "file" not in self.cfg[name] and self.cfg[name]["type"] != "sqrsum" and self.cfg[name]["type"] != "stack" \
+				and self.cfg[name]["type"] != "line" and self.cfg[name]["type"] != "box": 
 			print >>sys.stderr, "file not specified in cfg for histo", name
 			raise TypeError
 
-		if "obj"  not in self.cfg[name]:
+		if "obj"  not in self.cfg[name] and self.cfg[name]["type"] != "line" and self.cfg[name]["type"] != "box":
 			print >>sys.stderr, "obj not specified in cfg for histo", name
 			raise TypeError
 
@@ -482,14 +506,16 @@ class Plotter:
 
 		elif self.cfg[name]["type"].lower()=="line" or \
 		     self.cfg[name]["type"].lower()=="box":
-			h = ROOT.TGraph()
+			h = ROOT.TGraphAsymmErrors()
+			h.SetName(name)
 			for pointStr in self.cfg[name]['points'].split(';'):
-				x=self.FloatKey( pointStr.split(',')[0] )
-				y=self.FloatKey( pointStr.split(',')[1] )
+				x=float( pointStr.split(',')[0] )
+				y=float( pointStr.split(',')[1] )
 				h.SetPoint(h.GetN(),x,y)
+				h.SetPointError(h.GetN()-1,0,0,0,0)
 			## check on style
 			if self.cfg[name]['type'].lower() == "line" and self.cfg[name]['style'] !="line": print "Warning Line",name,"is not set to 'line' option in style"
-			if self.cfg[name]['type'].lower() == "box" and self.cfg[name]['style'] !="band": print "Warning Box",name,"is not set to 'band' option in style"
+			if self.cfg[name]['type'].lower() == "box" and self.cfg[name]['style'] !="fill": print "Warning Box",name,"is not set to 'fill' option in style"
 
 		else: ## th1/tgraph
 			f = ROOT.TFile.Open(self.cfg[name]["file"] )
@@ -518,7 +544,7 @@ class Plotter:
 			obj.fillstyle=self.ColorKey(name,"fillstyle")
 			obj.fillcolor=self.ColorKey(name,"fillcolor")
 
-		if self.cfg[name]["type"].lower() == "tgraph":
+		if self.cfg[name]["type"].lower() == "tgraph" or self.cfg[name]["type"].lower() =="line" or self.cfg[name]["type"].lower()=="box" :
 			obj=Graph()
 			obj.obj = h
 			obj.graph = obj.obj
@@ -700,7 +726,7 @@ class Plotter:
 			b=float( colortext.split(',')[3])
 			if len(colortext.split(','))> 4: 
 				a=float( colortext.split(',')[4])
-				c=ROOT.TColor(self.newcolorindex,r,g,b,a)
+				c=ROOT.TColor(self.newcolorindex,r,g,b,"MyColor%d"%self.newcolorindex,a)
 			else:
 				c=ROOT.TColor(self.newcolorindex,r,g,b)
 			self.newcolors.append(c) ## garbage collector
