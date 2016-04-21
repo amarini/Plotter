@@ -709,6 +709,7 @@ class Plotter:
 		''' Standard reparsing in the configfile for displayed text'''
 		r=re.sub('~',' ',string)
 		r=re.sub('@','#',r)
+		r=re.sub('???','',r)
 		return r
 
 	def BoolKey(self, section, field, extraValues=False):

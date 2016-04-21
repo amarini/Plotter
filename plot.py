@@ -10,11 +10,41 @@ usage='''
 parser=OptionParser(usage=usage)
 parser.add_option("-d","--dat", dest="dat", help="configuration file %default.", type="string", default="config.txt")
 parser.add_option("-v","--verbose", dest="verbose",action='store_true', help="Verbose. %default.", default=False)
+parser.add_option("-e","--extrasub", dest="extrasub", help="Extra substitutions. {'dir':'plotall'} [%default]", default='{}')
 
 (opts,args)=parser.parse_args()
 
+exec("extrasub="+opts.extrasub) ## useful for 
+
+if opts.verbose:
+	print "---- EXTRA ----"
+	print extrasub
+	print "---------------"
+
+
 # configparser in python3
 from ConfigParser import RawConfigParser
+
+def GetSubdict(cfg):
+	subdict={}
+	if 'substitute' in cfg:
+		for key in cfg['substitute']:
+			subdict[key]=cfg['substitute'][key]
+	for key in extrasub:
+		subdict[key]=extrasub[key]
+	return subdict
+
+def Substitute(cfg):
+	''' Final Substitution of all the keys'''
+	if 'substitute' in cfg:
+		subdict=GetSubdict(cfg)
+		del cfg["substitute"]
+		## loop over the cfg and apply sub
+		for sect in cfg:
+			for name in cfg[sect]:
+				value=cfg[sect][name]%subdict
+				cfg[sect][name]=value
+	return 
 
 ## read configuration
 if opts.verbose:  print "-> Reading configuration from:", opts.dat
@@ -35,6 +65,8 @@ while "include" in cfg:
 	   for s in cfg["include"]["sub"].split(','):
 		   sub.append( (s.split(':')[0],s.split(':')[1]  )  )
 
+	subdict=GetSubdict(cfg)
+	cfg['include']['file'] = cfg['include']['file']%subdict
 	print "-> Reading file",cfg["include"]["file"]
 	_cfg = RawConfigParser()
 	_cfg.read( cfg["include"]["file"] )
@@ -53,16 +85,7 @@ while "include" in cfg:
 	del _cfg	
 
 #### STANDARD SET OF substitutions
-if 'substitute' in cfg:
-	subdic={}
-	for key in cfg['substitute']:
-		subdic[key]=cfg['substitute'][key]
-	del cfg["substitute"]
-	## loop over the cfg and apply sub
-	for sect in cfg:
-		for name in cfg[sect]:
-			value=cfg[sect][name]%subdict
-			cfg[sect][name]=value
+Substitute(cfg)
 
 #PRINT CFG
 if opts.verbose:
