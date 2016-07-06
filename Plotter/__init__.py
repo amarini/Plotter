@@ -14,6 +14,18 @@ sys.argv=["-b"]
 import ROOT
 ROOT.gROOT.SetBatch()
 
+def SetPoissonErrorsToGraph(g):
+	''' Set Poisson Errors to an Asymm Graph'''
+	alpha=0.68
+	for i in range(0,g.GetN() ):
+		N=g.GetY()[i]
+		L=0
+		if N>0:
+			L=ROOT.Math.gamma_quantile(alpha/2.,N,1.)
+		U=ROOT.Math.gamma_quantile_c(alpha/2.,N+1,1)
+		g.SetPointEYlow(i,N-L)
+		g.SetPointEYhigh(i,U-N)
+
 class BaseDraw(object): # object "newclass type", make super and co behave differently. This are type and objects
 	''' Base Class for Objects that can be drawn'''
 	def __init__(self):
@@ -28,6 +40,7 @@ class BaseDraw(object): # object "newclass type", make super and co behave diffe
 		self.drawerrors=False
 		self.legendobj=None
 		self.draw = False
+		self.poisson= False
 		pass 
 
 	def __del__(self):
@@ -67,6 +80,7 @@ class BaseDraw(object): # object "newclass type", make super and co behave diffe
 		self.size= other.size
 		self.width = other.width
 		self.drawerrors= other.drawerrors
+		self.poisson=other.poisson
 		return self
 
 class Collection:
@@ -142,6 +156,9 @@ class Graph(BaseDraw):
 		self.graph.SetPointError(n, exl, exh, eyl, eyh)
 		return self
 
+	def SetPoissonErrors(self):
+		SetPoissonErrorsToGraph(self.graph)
+
 	def Range(self, ymin,ymax):
 		''' Change aspects points in such a way that the errors are in the yrange.
 		    This is performed by filling the graphRange histo that will be drawn w/o markers
@@ -172,6 +189,7 @@ class Graph(BaseDraw):
 		if self.graph == None:
 			self.graph=self.obj
 		# set for errors
+		if self.poisson: SetPoissonErrors()
 		#set style and draw
 		if self.style == self.styles["marker"]:
 			self.graph.SetMarkerStyle(self.styleopt)
@@ -314,6 +332,8 @@ class Histo(BaseDraw):
 		'''Draw'''
 		if self.xerror or self.yerror: self.drawerrors=True # update info
 
+		if self.poisson: self.hist.SetBinErrorOption(ROOT.TH1.kPoisson) ## used only by hist drawing, graph will copy and use the 
+
 		self.SetDrawOptions()
 
 		##
@@ -422,7 +442,8 @@ class Plotter:
 			print "--- Loading Histo "+name+" ---"
 
 		if "file" not in self.cfg[name] and self.cfg[name]["type"] != "sqrsum" and self.cfg[name]["type"] != "stack" \
-				and self.cfg[name]["type"] != "line" and self.cfg[name]["type"] != "box": 
+				and self.cfg[name]["type"] != "line" and self.cfg[name]["type"] != "box"\
+				and self.cfg[name]["type"] != "envelope": 
 			print >>sys.stderr, "file not specified in cfg for histo", name
 			raise TypeError
 
@@ -434,17 +455,25 @@ class Plotter:
 			obj=Histo()
 			obj.fillstyle=self.ColorKey(name,"fillstyle")
 			obj.fillcolor=self.ColorKey(name,"fillcolor")
+			obj.xerror=True
 			for index,objName in enumerate(self.cfg[name]["obj"].split(',')):
-				if ',' in self.cfg[name]["file"]:
-					fName=self.cfg[name]["file"].split(',')[index]
-					f = ROOT.TFile.Open(fName)
-				else: 
-					f = ROOT.TFile.Open(self.cfg[name]["file"] )
-				self.fROOT.cd()
-				#o=f.Get(objName).Clone()
-				o=self.GetObjFromFile(f,objName).Clone()
-				f.Close()
-				f=None
+				### If file key is present open the file and load the objects from there
+				if 'file' in self.cfg[name]:
+					if ',' in self.cfg[name]["file"]:
+						fName=self.cfg[name]["file"].split(',')[index]
+						f = ROOT.TFile.Open(fName)
+					else: 
+						f = ROOT.TFile.Open(self.cfg[name]["file"] )
+					self.fROOT.cd()
+					#o=f.Get(objName).Clone()
+					o=self.GetObjFromFile(f,objName).Clone()
+					f.Close()
+					f=None
+				else:
+					self.LoadObj(objName,False)
+					otmp = self.collection.Get(objName)
+					o= otmp.obj.Clone(objName +"_"+ name)
+
 				if index == 0 : 
 					obj.obj = o
 					for i in range(1,obj.obj.GetNbinsX()+1):
@@ -495,13 +524,20 @@ class Plotter:
 				if idx==0: 
 					h=h_tmp.Clone(name)
 					self.garbage.append(h)
+					if 'scale' in self.cfg[name] and ',' in self.cfg[name]['scale']:
+						if self.verbose> 0 : print "* scaling",name,"idx",idx,"of",float(self.cfg[name]['scale'].split(',')[idx] )
+						h.Scale(float(self.cfg[name]['scale'].split(',')[idx] )) 
 					#h = self.garbage[-1]
 				else:
 					if h==None: print"Error: h become None --> ",h,"--",self.garbage[-1]
+					if 'scale' in self.cfg[name] and ',' in self.cfg[name]['scale']:
+						if self.verbose> 0 : print "* scaling",name,"idx",idx,"of",float(self.cfg[name]['scale'].split(',')[idx] )
+						h_tmp.Scale(float(self.cfg[name]['scale'].split(',')[idx] )) 
 					h.Add(h_tmp)
 				#f.Close()
 
 			if self.BoolKey(name,"norm"):
+				if self.verbose> 0 : print "* normalize ",name
 				h.Scale( 1./h.Integral() )
 
 		elif self.cfg[name]["type"].lower()=="line" or \
@@ -527,6 +563,7 @@ class Plotter:
 				raise NameError
 			h = h_tmp.Clone(name)
 			if self.BoolKey(name,"norm"):
+				if self.verbose> 0 : print "* normalize ",name
 				h.Scale( 1./h.Integral() )
 
 
@@ -553,8 +590,9 @@ class Plotter:
 				self.cfg[name]["type"].lower() == "th1" or \
 				self.cfg[name]["type"]=="add":
 			obj=Histo()
-			if 'scale' in self.cfg[name]:
+			if 'scale' in self.cfg[name] and ',' not in self.cfg[name]['scale']:
 				scale=self.FloatKey(name,"scale")
+				if self.verbose> 0 : print "* scaling ",name,"of",scale
 				if scale>0: h.Scale(scale )
 			if 'rebin' in self.cfg[name]:
 				r = self.NumKey(name,'rebin')
@@ -709,7 +747,7 @@ class Plotter:
 		''' Standard reparsing in the configfile for displayed text'''
 		r=re.sub('~',' ',string)
 		r=re.sub('@','#',r)
-		r=re.sub('???','',r)
+		r=re.sub('XXX','',r)
 		return r
 
 	def BoolKey(self, section, field, extraValues=False):
@@ -823,6 +861,7 @@ class Plotter:
 
 			elif self.cfg[name]["style"].lower() == "line": 
 				mytype = "L"
+				if self.collection.Get(name)== None: print "Unable to Get ",name
 				if self.collection.Get(name).fillstyle >0 and self.collection.Get(name).fillcolor >0:
 					mytype = "F"
 
@@ -932,8 +971,12 @@ class Plotter:
 		axisHist.Draw("AXIS")
 		axisHist.Draw("AXIS X+Y+ SAME")
 		self.axisHist=axisHist
-		if self.BoolKey("base","xlog"): self.pad1.SetLogx()
-		if self.BoolKey("base","ylog"): self.pad1.SetLogy()
+		if self.BoolKey("base","xlog"): 
+			self.pad1.SetLogx()
+			axisHist.GetXaxis().SetMoreLogLabels()
+			axisHist.GetXaxis().SetNoExponent()
+		if self.BoolKey("base","ylog"): 
+			self.pad1.SetLogy()
 		return self
 
 	def RedrawAxis(self):
