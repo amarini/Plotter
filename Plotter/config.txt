@@ -85,6 +85,7 @@
 ##  label = legend label
 ##  scale= (TH1,add)
 ##  rebin= (TH1,add)
+##  rebinList=(TH1,add) 0,1,2,5,10
 ##  points= x,y;x2,y2 ... (must, line, box)
 ##  blind = x1,y1 (th1/th1d/tgraph)
 ### 

@@ -7,6 +7,8 @@ import re
 ## lst subprocess
 from glob import glob
 from subprocess import *
+from array import array
+import math
 
 
 # remove argv, otherwise if -b change ROOT Behaviour
@@ -25,6 +27,11 @@ def SetPoissonErrorsToGraph(g):
 		U=ROOT.Math.gamma_quantile_c(alpha/2.,N+1,1)
 		g.SetPointEYlow(i,N-L)
 		g.SetPointEYhigh(i,U-N)
+def RebinVariable(h,list):
+	''' Rebin with un-even bins p[0,20,40,60,80,100,120,140,160,180,200,220,240,260,280,300,350,400,500,600,700,800,900,1000,2000,8000]'''
+	mybins=array('d',list)
+	h1=h.Rebin(len(mybins)-1,h.GetName()+"_rebin",mybins)
+	return h1
 
 class BaseDraw(object): # object "newclass type", make super and co behave differently. This are type and objects
 	''' Base Class for Objects that can be drawn'''
@@ -597,6 +604,12 @@ class Plotter:
 			if 'rebin' in self.cfg[name]:
 				r = self.NumKey(name,'rebin')
 				if r>0: h.Rebin(r)
+
+			if 'rebinlist' in self.cfg[name]:
+				l=[]
+				for i in self.cfg[name]['rebinlist'].split(','):
+					l.append(float(i))
+				h=RebinVariable(h,l)
 			obj.obj = h
 			obj.fillstyle=self.ColorKey(name,"fillstyle")
 			obj.fillcolor=self.ColorKey(name,"fillcolor")
